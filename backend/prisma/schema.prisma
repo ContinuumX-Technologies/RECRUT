@@ -1,0 +1,128 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  passwordHash String
+  role        Role
+  candidateId String?  // for CANDIDATE: registration no (e.g. 21BIT1234)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  interviewsAsInterviewer Interview[] @relation("InterviewerUser")
+}
+
+model InterviewTemplate {
+  id          String     @id @default(cuid())
+  name        String
+  role        String
+  level       String      // e.g. "junior", "mid", "senior"
+  description String?
+  // dynamic interview configuration (questions list, proctor settings, scoring options, etc.)
+  config      Json
+
+  interviews  Interview[]
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Interview {
+  id             String   @id @default(cuid())
+  candidateName  String
+  candidateEmail String
+  candidateId    String   
+
+  status         String   @default("scheduled")
+  scheduledAt    DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  suspicionScore Int      @default(0)
+
+  templateId     String?
+  template       InterviewTemplate? @relation(fields: [templateId], references: [id])
+  
+  // ADD THIS FIELD:
+  customConfig   Json?    // Stores specific questions/settings for this interview
+
+  interviewerId  String?
+  interviewer    User?    @relation("InterviewerUser", fields: [interviewerId], references: [id])
+  
+  referenceFacePath  String?
+  referenceVoicePath String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  proctorEvents  ProctorEvent[]
+  frames         ProctorFrame[]
+  mediaRecords   MediaRecord[]
+
+  // NEW: AI Shadow Interviewer Summary
+  aiSummary      Json?   // { strengths: [], weaknesses: [], overallScore: 0-100 }
+}
+
+model ProctorEvent {
+  id          String    @id @default(cuid())
+  interviewId String
+  interview   Interview @relation(fields: [interviewId], references: [id] , onDelete: Cascade)
+  type        String
+  payload     Json
+  createdAt   DateTime  @default(now())
+}
+
+model ProctorFrame {
+  id          String    @id @default(cuid())
+  interviewId String
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  path        String    // local file path
+  createdAt   DateTime  @default(now())
+}
+
+model MediaRecord {
+  id              String     @id @default(cuid())
+  interviewId     String
+  interview       Interview  @relation(fields: [interviewId], references: [id] , onDelete: Cascade )
+
+  // 'audio' | 'video' | 'frame'
+  type            String
+  path            String
+
+  // 🔊 Audio / transcript analysis
+  durationSec     Float?
+  transcript      String?
+  analysisJson    Json?       // metrics + LLM analysis from worker
+
+  // 🧠 YOLO / video analysis
+  yoloProcessed   Boolean     @default(false)   // set true once YOLO runs (even if file missing)
+  yoloSummary     Json?       // summary object (ratios, counts, etc.)
+  yoloFlags       Json?       // optional: per-chunk flags / details
+
+  // 🔁 Generic processing status
+  processed       Boolean     @default(false)   // overall processed flag (audio side)
+  processingStage String      @default("pending")
+
+  // Optional per-chunk suspicion score (in addition to Interview.suspicionScore)
+  suspicionScore  Int         @default(0)
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([interviewId])
+  @@index([type])
+  @@index([yoloProcessed])
+}
+
+enum Role {
+  CANDIDATE
+  INTERVIEWER
+}

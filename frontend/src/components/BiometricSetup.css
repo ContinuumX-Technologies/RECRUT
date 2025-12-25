@@ -1,0 +1,951 @@
+/* ============================================
+   BIOMETRIC SETUP - APPLE-INSPIRED DESIGN
+   ============================================ */
+
+/* ============================================
+   CSS CUSTOM PROPERTIES
+   ============================================ */
+
+   :root {
+    --bio-bg-primary: #ffffff;
+    --bio-bg-secondary: #f5f5f7;
+    --bio-bg-tertiary: #e8e8ed;
+    --bio-bg-elevated: #ffffff;
+    
+    --bio-text-primary: #1d1d1f;
+    --bio-text-secondary: #86868b;
+    --bio-text-tertiary: #aeaeb2;
+    
+    --bio-border-primary: #d2d2d7;
+    --bio-border-secondary: #e5e5ea;
+    
+    --bio-accent: #0071e3;
+    --bio-accent-hover: #0077ed;
+    --bio-accent-bg: rgba(0, 113, 227, 0.08);
+    
+    --bio-purple: #5856d6;
+    --bio-purple-bg: rgba(88, 86, 214, 0.08);
+    
+    --bio-success: #34c759;
+    --bio-success-bg: rgba(52, 199, 89, 0.12);
+    
+    --bio-error: #ff3b30;
+    --bio-error-bg: rgba(255, 59, 48, 0.12);
+    
+    --bio-warning: #ff9500;
+    
+    --bio-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+    
+    --bio-radius-sm: 8px;
+    --bio-radius-md: 12px;
+    --bio-radius-lg: 16px;
+    --bio-radius-xl: 24px;
+    --bio-radius-2xl: 32px;
+    --bio-radius-full: 9999px;
+    
+    --bio-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --bio-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --bio-shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.12);
+    --bio-shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.2);
+    
+    --bio-ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --bio-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  
+  /* Dark Mode */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bio-bg-primary: #000000;
+      --bio-bg-secondary: #1c1c1e;
+      --bio-bg-tertiary: #2c2c2e;
+      --bio-bg-elevated: #1c1c1e;
+      
+      --bio-text-primary: #f5f5f7;
+      --bio-text-secondary: #a1a1a6;
+      --bio-text-tertiary: #6e6e73;
+      
+      --bio-border-primary: #38383a;
+      --bio-border-secondary: #2c2c2e;
+      
+      --bio-accent: #0a84ff;
+      --bio-accent-hover: #409cff;
+      --bio-accent-bg: rgba(10, 132, 255, 0.15);
+      
+      --bio-purple: #bf5af2;
+      --bio-purple-bg: rgba(191, 90, 242, 0.15);
+      
+      --bio-success: #30d158;
+      --bio-error: #ff453a;
+    }
+  }
+  
+  /* ============================================
+     MAIN CONTAINER
+     ============================================ */
+  
+  .biometric-setup {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--bio-bg-secondary) 0%, var(--bio-bg-primary) 100%);
+    font-family: var(--bio-font);
+    max-height: 50%;
+  }
+  
+  /* ============================================
+     MAIN CARD
+     ============================================ */
+  
+  .biometric-card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--bio-bg-elevated);
+    border-radius: var(--bio-radius-2xl);
+    box-shadow: var(--bio-shadow-xl);
+    overflow: hidden;
+    animation: bioSlideUp 0.5s var(--bio-spring);
+  }
+  
+  @keyframes bioSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  /* Card Header */
+  .biometric-card__header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem 1.5rem 1rem;
+    border-bottom: 1px solid var(--bio-border-secondary);
+  }
+  
+  .biometric-card__logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--bio-accent), var(--bio-purple));
+    border-radius: var(--bio-radius-lg);
+    color: white;
+    flex-shrink: 0;
+  }
+  
+  .biometric-card__logo svg {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .biometric-card__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--bio-text-primary);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.125rem;
+  }
+  
+  .biometric-card__subtitle {
+    font-size: 0.8125rem;
+    color: var(--bio-text-secondary);
+  }
+  
+  /* Card Footer */
+  .biometric-card__footer {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: var(--bio-bg-secondary);
+    border-top: 1px solid var(--bio-border-secondary);
+  }
+  
+  .biometric-card__footer svg {
+    width: 16px;
+    height: 16px;
+    color: var(--bio-success);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  
+  .biometric-card__footer p {
+    font-size: 0.75rem;
+    color: var(--bio-text-secondary);
+    line-height: 1.5;
+  }
+  
+  /* ============================================
+     STEP INDICATOR
+     ============================================ */
+  
+  .biometric-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem 1.5rem;
+    background: var(--bio-bg-secondary);
+  }
+  
+  .biometric-steps__item {
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  
+  .biometric-steps__indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--bio-bg-tertiary);
+    border: 2px solid var(--bio-border-primary);
+    border-radius: 50%;
+    color: var(--bio-text-tertiary);
+    transition: all 0.3s var(--bio-ease-out);
+  }
+  
+  .biometric-steps__indicator svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .biometric-steps__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .biometric-steps__indicator--current {
+    background: var(--bio-accent-bg);
+    border-color: var(--bio-accent);
+    color: var(--bio-accent);
+    transform: scale(1.1);
+  }
+  
+  .biometric-steps__indicator--completed {
+    background: var(--bio-success);
+    border-color: var(--bio-success);
+    color: white;
+  }
+  
+  .biometric-steps__label {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--bio-text-tertiary);
+    white-space: nowrap;
+  }
+  
+  .biometric-steps__label--current {
+    color: var(--bio-accent);
+    font-weight: 600;
+  }
+  
+  .biometric-steps__connector {
+    width: 60px;
+    height: 2px;
+    background: var(--bio-border-primary);
+    margin: 0 0.5rem;
+    transition: background 0.3s var(--bio-ease-out);
+  }
+  
+  .biometric-steps__connector--completed {
+    background: var(--bio-success);
+  }
+  
+  /* ============================================
+     STEP CONTENT
+     ============================================ */
+  
+  .biometric-step {
+    padding: 1.5rem;
+    animation: bioFadeIn 0.4s var(--bio-ease-out);
+  }
+  
+  @keyframes bioFadeIn {
+    from {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  .biometric-step__header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .biometric-step__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--bio-accent-bg);
+    color: var(--bio-accent);
+    border-radius: var(--bio-radius-full);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+  }
+  
+  .biometric-step__badge svg {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .biometric-step__badge--purple {
+    background: var(--bio-purple-bg);
+    color: var(--bio-purple);
+  }
+  
+  .biometric-step__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--bio-text-primary);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+  }
+  
+  .biometric-step__description {
+    font-size: 0.875rem;
+    color: var(--bio-text-secondary);
+    line-height: 1.5;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+  
+  /* ============================================
+     CAMERA
+     ============================================ */
+  
+  .biometric-camera {
+    position: relative;
+    aspect-ratio: 4/3;
+    background: var(--bio-bg-tertiary);
+    border-radius: var(--bio-radius-xl);
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+    border: 2px solid var(--bio-border-secondary);
+    transition: border-color 0.3s var(--bio-ease-out);
+  }
+  
+  .biometric-camera--active {
+    border-color: var(--bio-accent);
+  }
+  
+  .biometric-camera--captured {
+    border-color: var(--bio-success);
+  }
+  
+  .biometric-camera__enable {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s var(--bio-ease-out);
+  }
+  
+  .biometric-camera__enable:hover {
+    background: rgba(0, 113, 227, 0.05);
+  }
+  
+  .biometric-camera__enable-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    background: var(--bio-accent-bg);
+    border-radius: 50%;
+    color: var(--bio-accent);
+    transition: transform 0.2s var(--bio-spring);
+  }
+  
+  .biometric-camera__enable:hover .biometric-camera__enable-icon {
+    transform: scale(1.1);
+  }
+  
+  .biometric-camera__enable-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .biometric-camera__enable span {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--bio-accent);
+  }
+  
+  .biometric-camera__enable p {
+    font-size: 0.75rem;
+    color: var(--bio-text-tertiary);
+  }
+  
+  .biometric-camera__video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+  }
+  
+  .biometric-camera__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  
+  .biometric-camera__frame {
+    width: 65%;
+    height: 80%;
+    border: 3px solid rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.3);
+  }
+  
+  .biometric-camera__flash {
+    position: absolute;
+    inset: 0;
+    background: white;
+    animation: bioFlash 0.3s ease-out forwards;
+  }
+  
+  @keyframes bioFlash {
+    from {
+      opacity: 0.8;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  
+  /* ============================================
+     VOICE RECORDING
+     ============================================ */
+  
+  .biometric-voice {
+    margin-bottom: 1.25rem;
+  }
+  
+  .biometric-voice__prompt {
+    position: relative;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--bio-accent-bg), var(--bio-purple-bg));
+    border-radius: var(--bio-radius-xl);
+    text-align: center;
+  }
+  
+  .biometric-voice__quote {
+    position: absolute;
+    top: 0.5rem;
+    left: 1rem;
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--bio-accent);
+    opacity: 0.3;
+    line-height: 1;
+  }
+  
+  .biometric-voice__prompt p {
+    font-size: 1rem;
+    color: var(--bio-text-primary);
+    line-height: 1.6;
+    font-style: italic;
+  }
+  
+  .biometric-voice__prompt strong {
+    color: var(--bio-accent);
+    font-weight: 600;
+  }
+  
+  .biometric-voice__recording {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--bio-error-bg);
+    border-radius: var(--bio-radius-lg);
+  }
+  
+  .biometric-voice__waveform {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 32px;
+  }
+  
+  .biometric-voice__bar {
+    width: 4px;
+    height: 100%;
+    background: var(--bio-error);
+    border-radius: 2px;
+    animation: bioWave 0.6s ease-in-out infinite alternate;
+  }
+  
+  @keyframes bioWave {
+    from {
+      transform: scaleY(0.3);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+  
+  .biometric-voice__timer {
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--bio-error);
+  }
+  
+  /* ============================================
+     TIPS
+     ============================================ */
+  
+  .biometric-tips {
+    padding: 1rem;
+    background: var(--bio-bg-secondary);
+    border-radius: var(--bio-radius-lg);
+    margin-bottom: 1.25rem;
+  }
+  
+  .biometric-tips h4 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--bio-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+  }
+  
+  .biometric-tips ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .biometric-tips li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--bio-text-secondary);
+  }
+  
+  .biometric-tips li svg {
+    width: 14px;
+    height: 14px;
+    color: var(--bio-success);
+    flex-shrink: 0;
+  }
+  
+  /* ============================================
+     UPLOADING STATE
+     ============================================ */
+  
+  .biometric-uploading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--bio-text-secondary);
+  }
+  
+  /* ============================================
+     ALERT
+     ============================================ */
+  
+  .biometric-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    margin: 0 1.5rem 1rem;
+    border-radius: var(--bio-radius-lg);
+  }
+  
+  .biometric-alert svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+  
+  .biometric-alert p {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  
+  .biometric-alert--error {
+    background: var(--bio-error-bg);
+    color: var(--bio-error);
+  }
+  
+  /* ============================================
+     BUTTONS
+     ============================================ */
+  
+  .biometric-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+    font-family: var(--bio-font);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--bio-radius-full);
+    cursor: pointer;
+    transition: all 0.2s var(--bio-ease-out);
+  }
+  
+  .biometric-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .biometric-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .biometric-btn--full {
+    width: 100%;
+  }
+  
+  .biometric-btn--primary {
+    background: var(--bio-accent);
+    color: white;
+  }
+  
+  .biometric-btn--primary:hover:not(:disabled) {
+    background: var(--bio-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+  }
+  
+  .biometric-btn--danger {
+    background: var(--bio-error);
+    color: white;
+  }
+  
+  .biometric-btn--danger:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+  
+  .biometric-btn--recording {
+    animation: bioPulse 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes bioPulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 12px rgba(255, 59, 48, 0);
+    }
+  }
+  
+  /* ============================================
+     SPINNER
+     ============================================ */
+  
+  .biometric-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .biometric-spinner--sm .biometric-spinner__ring {
+    width: 18px;
+    height: 18px;
+    border-width: 2px;
+  }
+  
+  .biometric-spinner__ring {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: bioSpin 0.8s linear infinite;
+  }
+  
+  @keyframes bioSpin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* ============================================
+     CALIBRATION SCREEN
+     ============================================ */
+  
+  .biometric-calibration {
+    position: fixed;
+    inset: 0;
+    background: var(--bio-bg-primary);
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .biometric-calibration__header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 1.5rem;
+    background: linear-gradient(to bottom, var(--bio-bg-primary), transparent);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .biometric-calibration__header-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-align: left;
+  }
+  
+  .biometric-calibration__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: var(--bio-accent-bg);
+    border-radius: var(--bio-radius-lg);
+    color: var(--bio-accent);
+    flex-shrink: 0;
+  }
+  
+  .biometric-calibration__icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .biometric-calibration__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--bio-text-primary);
+    letter-spacing: -0.02em;
+  }
+  
+  .biometric-calibration__subtitle {
+    font-size: 0.875rem;
+    color: var(--bio-text-secondary);
+  }
+  
+  .biometric-calibration__progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .biometric-calibration__progress-bar {
+    width: 200px;
+    height: 6px;
+    background: var(--bio-bg-tertiary);
+    border-radius: var(--bio-radius-full);
+    overflow: hidden;
+  }
+  
+  .biometric-calibration__progress-fill {
+    height: 100%;
+    background: var(--bio-success);
+    border-radius: var(--bio-radius-full);
+    transition: width 0.3s var(--bio-ease-out);
+  }
+  
+  .biometric-calibration__progress-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--bio-success);
+  }
+  
+  .biometric-calibration__loading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--bio-warning);
+    color: white;
+    border-radius: var(--bio-radius-full);
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+  
+  .biometric-calibration__loading .biometric-spinner__ring {
+    border-color: rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+  }
+  
+  /* Calibration Grid */
+  .biometric-calibration__grid {
+    flex: 1;
+    position: relative;
+    cursor: crosshair;
+  }
+  
+  .biometric-calibration__point {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    transform: translate(-50%, -50%);
+    background: var(--bio-error);
+    border: 4px solid white;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s var(--bio-spring);
+    box-shadow: 0 0 20px rgba(255, 59, 48, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .biometric-calibration__point:hover:not(:disabled) {
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  
+  .biometric-calibration__point:disabled {
+    cursor: default;
+  }
+  
+  .biometric-calibration__point--clicked {
+    background: var(--bio-success);
+    border-color: white;
+    box-shadow: 0 0 20px rgba(52, 199, 89, 0.5);
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  
+  .biometric-calibration__point--clicked svg {
+    width: 20px;
+    height: 20px;
+    color: white;
+  }
+  
+  /* ============================================
+     RESPONSIVE
+     ============================================ */
+  
+  @media (max-width: 480px) {
+    .biometric-setup {
+      padding: 0;
+    }
+    
+    .biometric-card {
+      max-width: none;
+      border-radius: 0;
+      min-height: 100vh;
+    }
+    
+    .biometric-steps__connector {
+      width: 40px;
+    }
+    
+    .biometric-calibration__point {
+      width: 32px;
+      height: 32px;
+    }
+  }
+  
+  /* ============================================
+     REDUCED MOTION
+     ============================================ */
+  
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* ============================================
+     FOCUS STATES
+     ============================================ */
+  
+  :focus-visible {
+    outline: 2px solid var(--bio-accent);
+    outline-offset: 2px;
+  }
+  
+  /* ============================================
+     WEBGAZER OVERRIDES
+     ============================================ */
+  
+  #webgazerVideoContainer {
+    position: fixed !important;
+    bottom: 1rem !important;
+    left: 1rem !important;
+    top: auto !important;
+    width: 200px !important;
+    height: 150px !important;
+    border-radius: var(--bio-radius-lg) !important;
+    overflow: hidden !important;
+    box-shadow: var(--bio-shadow-lg) !important;
+    border: 2px solid var(--bio-border-primary) !important;
+    z-index: 999 !important;
+  }
+  
+  #webgazerVideoFeed {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+  
+  #webgazerFaceOverlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+  }
+  
+  #webgazerFaceFeedbackBox {
+    border-color: var(--bio-success) !important;
+  }
+  
+  #webgazerGazeDot {
+    background: var(--bio-accent) !important;
+    width: 12px !important;
+    height: 12px !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 10px var(--bio-accent) !important;
+  }

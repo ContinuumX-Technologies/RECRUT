@@ -1,0 +1,760 @@
+/* ============================================
+   APPLE-INSPIRED REGISTER PAGE
+   ============================================ */
+
+/* ============================================
+   CSS CUSTOM PROPERTIES
+   ============================================ */
+
+   .register-page {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f7;
+    --bg-tertiary: #e8e8ed;
+    --bg-elevated: #ffffff;
+    
+    --text-primary: #1d1d1f;
+    --text-secondary: #86868b;
+    --text-tertiary: #aeaeb2;
+    
+    --border-primary: #d2d2d7;
+    --border-secondary: #e5e5ea;
+    
+    --accent-primary: #0071e3;
+    --accent-hover: #0077ed;
+    --accent-secondary: #5856d6;
+    
+    --success: #34c759;
+    --success-bg: rgba(52, 199, 89, 0.12);
+    --error: #ff3b30;
+    --error-bg: rgba(255, 59, 48, 0.1);
+    
+    --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+    
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 28px;
+    
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.12);
+    
+    --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  
+  /* Dark Mode */
+  @media (prefers-color-scheme: dark) {
+    .register-page {
+      --bg-primary: #000000;
+      --bg-secondary: #1c1c1e;
+      --bg-tertiary: #2c2c2e;
+      --bg-elevated: #1c1c1e;
+      
+      --text-primary: #f5f5f7;
+      --text-secondary: #a1a1a6;
+      --text-tertiary: #6e6e73;
+      
+      --border-primary: #38383a;
+      --border-secondary: #2c2c2e;
+      
+      --accent-primary: #0a84ff;
+      --accent-hover: #409cff;
+    }
+  }
+  
+  /* ============================================
+     PAGE LAYOUT
+     ============================================ */
+  
+  .register-page {
+    display: flex;
+    min-height: 100vh;
+    min-width: 100vw;
+    background: var(--bg-primary);
+    font-family: var(--font-family);
+    color: var(--text-primary);
+  }
+  
+  /* ============================================
+     LEFT SIDE - HERO
+     ============================================ */
+  
+  .register-hero {
+    display: none;
+    position: relative;
+    width: 50%;
+    background: linear-gradient(135deg, #1c1c1e 0%, #000000 100%);
+    overflow: hidden;
+  }
+  
+  @media (min-width: 1024px) {
+    .register-hero {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 64px;
+    }
+  }
+  
+  .register-hero__bg {
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 30% 20%, rgba(0, 113, 227, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, rgba(88, 86, 214, 0.1) 0%, transparent 50%);
+  }
+  
+  .register-hero__gradient {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  }
+  
+  .register-hero__content {
+    position: relative;
+    z-index: 1;
+    max-width: 480px;
+  }
+  
+  .register-hero__logo {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-xl);
+    margin-bottom: 32px;
+  }
+  
+  .register-hero__logo svg {
+    width: 32px;
+    height: 32px;
+    color: #0a84ff;
+  }
+  
+  .register-hero__title {
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: #ffffff;
+    margin-bottom: 24px;
+  }
+  
+  .register-hero__title-accent {
+    display: block;
+    background: linear-gradient(135deg, #0a84ff, #5856d6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .register-hero__subtitle {
+    font-size: 18px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 48px;
+  }
+  
+  .register-hero__features {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .register-feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .register-feature__icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 132, 255, 0.15);
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+  }
+  
+  .register-feature__icon svg {
+    width: 20px;
+    height: 20px;
+    color: #0a84ff;
+  }
+  
+  .register-feature__text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .register-feature__text strong {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ffffff;
+  }
+  
+  .register-feature__text span {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .register-hero__footer {
+    position: absolute;
+    bottom: 32px;
+    left: 64px;
+  }
+  
+  .register-hero__footer p {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.3);
+  }
+  
+  /* ============================================
+     RIGHT SIDE - FORM CONTAINER
+     ============================================ */
+  
+  .register-form-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow-y: auto;
+    background: var(--bg-primary);
+  }
+  
+  @media (min-width: 1024px) {
+    .register-form-container {
+      width: 50%;
+      padding: 48px;
+    }
+  }
+  
+  .register-form-wrapper {
+    width: 100%;
+    max-width: 420px;
+  }
+  
+  /* ============================================
+     HEADER
+     ============================================ */
+  
+  .register-header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  
+  @media (min-width: 1024px) {
+    .register-header {
+      text-align: left;
+    }
+  }
+  
+  .register-header__logo-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  
+  @media (min-width: 1024px) {
+    .register-header__logo-mobile {
+      display: none;
+    }
+  }
+  
+  .register-header__logo-mobile svg {
+    width: 28px;
+    height: 28px;
+    color: var(--accent-primary);
+  }
+  
+  .register-header__logo-mobile span {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  
+  .register-header__title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+  
+  @media (min-width: 768px) {
+    .register-header__title {
+      font-size: 32px;
+    }
+  }
+  
+  .register-header__subtitle {
+    font-size: 15px;
+    color: var(--text-secondary);
+  }
+  
+  .register-link {
+    color: var(--accent-primary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s var(--ease-out);
+  }
+  
+  .register-link:hover {
+    color: var(--accent-hover);
+  }
+  
+  /* ============================================
+     FORM
+     ============================================ */
+  
+  .register-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  /* ============================================
+     ROLE SELECTOR
+     ============================================ */
+  
+  .register-role-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  
+  .register-role-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 16px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    transition: all 0.25s var(--ease-out);
+    text-align: center;
+  }
+  
+  .register-role-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-primary);
+  }
+  
+  .register-role-btn--active {
+    background: rgba(0, 113, 227, 0.08);
+    border-color: var(--accent-primary);
+  }
+  
+  .register-role-btn--active:hover {
+    background: rgba(0, 113, 227, 0.12);
+  }
+  
+  .register-role-btn--interviewer.register-role-btn--active {
+    background: rgba(88, 86, 214, 0.08);
+    border-color: var(--accent-secondary);
+  }
+  
+  .register-role-btn__icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-lg);
+    transition: all 0.25s var(--ease-out);
+  }
+  
+  .register-role-btn__icon svg {
+    width: 22px;
+    height: 22px;
+    color: var(--text-secondary);
+    transition: color 0.25s var(--ease-out);
+  }
+  
+  .register-role-btn--active .register-role-btn__icon {
+    background: var(--accent-primary);
+  }
+  
+  .register-role-btn--active .register-role-btn__icon svg {
+    color: white;
+  }
+  
+  .register-role-btn--interviewer.register-role-btn--active .register-role-btn__icon {
+    background: var(--accent-secondary);
+  }
+  
+  .register-role-btn__label {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  
+  .register-role-btn__desc {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+  
+  .register-role-btn__check {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--success);
+    border-radius: 50%;
+    animation: scaleIn 0.2s var(--spring);
+  }
+  
+  .register-role-btn__check svg {
+    width: 12px;
+    height: 12px;
+    color: white;
+  }
+  
+  @keyframes scaleIn {
+    from {
+      transform: scale(0);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  /* ============================================
+     INPUT FIELDS
+     ============================================ */
+  
+  .register-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .register-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .register-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  
+  .register-label-optional {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-tertiary);
+    padding: 2px 8px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+  }
+  
+  .register-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  
+  .register-input-icon {
+    position: absolute;
+    left: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    transition: color 0.2s var(--ease-out);
+  }
+  
+  .register-input-icon svg {
+    width: 18px;
+    height: 18px;
+    color: var(--text-tertiary);
+  }
+  
+  .register-input-wrapper:focus-within .register-input-icon svg {
+    color: var(--accent-primary);
+  }
+  
+  .register-input {
+    width: 100%;
+    padding: 14px 16px 14px 48px;
+    font-family: var(--font-family);
+    font-size: 16px;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    outline: none;
+    transition: all 0.2s var(--ease-out);
+  }
+  
+  .register-input::placeholder {
+    color: var(--text-tertiary);
+  }
+  
+  .register-input:hover {
+    border-color: var(--border-primary);
+  }
+  
+  .register-input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.12);
+    background: var(--bg-elevated);
+  }
+  
+  .register-input-hint {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+  }
+  
+  /* ============================================
+     ERROR MESSAGE
+     ============================================ */
+  
+  .register-error {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--error-bg);
+    border: 1px solid rgba(255, 59, 48, 0.2);
+    border-radius: var(--radius-lg);
+    animation: slideDown 0.3s var(--ease-out);
+  }
+  
+  .register-error svg {
+    width: 18px;
+    height: 18px;
+    color: var(--error);
+    flex-shrink: 0;
+  }
+  
+  .register-error span {
+    font-size: 14px;
+    color: var(--error);
+    line-height: 1.4;
+  }
+  
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* ============================================
+     SUBMIT BUTTON
+     ============================================ */
+  
+  .register-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 16px 24px;
+    font-family: var(--font-family);
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    background: var(--accent-primary);
+    border: none;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.2s var(--ease-out);
+  }
+  
+  .register-submit:hover:not(:disabled) {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 113, 227, 0.3);
+  }
+  
+  .register-submit:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  
+  .register-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  .register-submit svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s var(--ease-out);
+  }
+  
+  .register-submit:hover:not(:disabled) svg {
+    transform: translateX(4px);
+  }
+  
+  /* ============================================
+     SPINNER
+     ============================================ */
+  
+  .register-spinner {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .register-spinner__ring {
+    width: 100%;
+    height: 100%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* ============================================
+     TERMS
+     ============================================ */
+  
+  .register-terms {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    text-align: center;
+    line-height: 1.5;
+  }
+  
+  .register-terms a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s var(--ease-out);
+  }
+  
+  .register-terms a:hover {
+    color: var(--accent-primary);
+  }
+  
+  /* ============================================
+     RESPONSIVE
+     ============================================ */
+  
+  @media (max-width: 479px) {
+    .register-form-container {
+      padding: 20px 16px;
+    }
+  
+    .register-header__title {
+      font-size: 24px;
+    }
+  
+    .register-role-btn {
+      padding: 16px 12px;
+    }
+  
+    .register-role-btn__icon {
+      width: 36px;
+      height: 36px;
+    }
+  
+    .register-role-btn__icon svg {
+      width: 18px;
+      height: 18px;
+    }
+  
+    .register-role-btn__label {
+      font-size: 14px;
+    }
+  
+    .register-input {
+      padding: 12px 16px 12px 44px;
+      font-size: 16px; /* Prevents zoom on iOS */
+    }
+  
+    .register-submit {
+      padding: 14px 20px;
+    }
+  }
+  
+  /* ============================================
+     ACCESSIBILITY
+     ============================================ */
+  
+  .register-input:focus-visible,
+  .register-role-btn:focus-visible,
+  .register-submit:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* ============================================
+     HIGH CONTRAST MODE
+     ============================================ */
+  
+  @media (prefers-contrast: high) {
+    .register-input {
+      border-width: 2px;
+    }
+  
+    .register-role-btn {
+      border-width: 2px;
+    }
+  
+    .register-submit {
+      border: 2px solid white;
+    }
+  }
+  
+  /* ============================================
+     SAFE AREA (iOS)
+     ============================================ */
+  
+  @supports (padding: env(safe-area-inset-bottom)) {
+    .register-form-container {
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+    }
+  }

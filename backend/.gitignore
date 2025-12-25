@@ -1,0 +1,17 @@
+/src/generated/prisma
+
+node_modules
+dist
+build
+coverage
+.env
+.DS_Store
+*.log
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pt
+*.dat

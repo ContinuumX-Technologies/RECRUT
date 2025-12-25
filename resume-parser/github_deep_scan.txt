@@ -1,0 +1,454 @@
+📄 SCANNING: Yash_Behera_Resume (1).pdf
+================================================================================
+
+👤 USER: YashBehera
+
+📁 REPO: AiFitness
+   📄 package-lock.json [npm lock]
+   📄 package.json [Node.js]
+      ├── Dependencies: 91
+      │    - @google/generative-ai: ^0.21.0
+      │    - @hookform/resolvers: ^3.10.0
+      │    - @jridgewell/trace-mapping: ^0.3.25
+      │    - @neondatabase/serverless: ^0.10.4
+      │    - @radix-ui/react-accordion: ^1.2.4
+      │    - @radix-ui/react-alert-dialog: ^1.1.7
+      │    - @radix-ui/react-aspect-ratio: ^1.1.3
+      │    - @radix-ui/react-avatar: ^1.1.4
+      │    - @radix-ui/react-checkbox: ^1.1.5
+      │    - @radix-ui/react-collapsible: ^1.1.4
+      │    - @radix-ui/react-context-menu: ^2.2.7
+      │    - @radix-ui/react-dialog: ^1.1.7
+      │    - @radix-ui/react-dropdown-menu: ^2.1.7
+      │    - @radix-ui/react-hover-card: ^1.1.7
+      │    - @radix-ui/react-label: ^2.1.3
+      │    - @radix-ui/react-menubar: ^1.1.7
+      │    - @radix-ui/react-navigation-menu: ^1.2.6
+      │    - @radix-ui/react-popover: ^1.1.7
+      │    - @radix-ui/react-progress: ^1.1.3
+      │    - @radix-ui/react-radio-group: ^1.2.4
+      │    - @radix-ui/react-scroll-area: ^1.2.4
+      │    - @radix-ui/react-select: ^2.1.7
+      │    - @radix-ui/react-separator: ^1.1.3
+      │    - @radix-ui/react-slider: ^1.2.4
+      │    - @radix-ui/react-slot: ^1.2.0
+      │    - @radix-ui/react-switch: ^1.1.4
+      │    - @radix-ui/react-tabs: ^1.1.4
+      │    - @radix-ui/react-toast: ^1.2.7
+      │    - @radix-ui/react-toggle: ^1.1.3
+      │    - @radix-ui/react-toggle-group: ^1.1.3
+      │    - @radix-ui/react-tooltip: ^1.2.0
+      │    - @tanstack/react-query: ^5.60.5
+      │    - class-variance-authority: ^0.7.1
+      │    - clsx: ^2.1.1
+      │    - cmdk: ^1.1.1
+      │    - connect-pg-simple: ^10.0.0
+      │    - cross-env: ^10.1.0
+      │    - date-fns: ^3.6.0
+      │    - dotenv: ^17.2.3
+      │    - drizzle-orm: ^0.39.1
+      │    - drizzle-zod: ^0.7.0
+      │    - embla-carousel-react: ^8.6.0
+      │    - express: ^4.21.2
+      │    - express-session: ^1.18.1
+      │    - framer-motion: ^11.13.1
+      │    - input-otp: ^1.4.2
+      │    - lucide-react: ^0.453.0
+      │    - memorystore: ^1.6.7
+      │    - next-themes: ^0.4.6
+      │    - openai: ^6.9.1
+      │    - passport: ^0.7.0
+      │    - passport-local: ^1.0.0
+      │    - react: ^18.3.1
+      │    - react-day-picker: ^8.10.1
+      │    - react-dom: ^18.3.1
+      │    - react-hook-form: ^7.55.0
+      │    - react-icons: ^5.4.0
+      │    - react-resizable-panels: ^2.1.7
+      │    - react-to-print: ^3.2.0
+      │    - recharts: ^2.15.2
+      │    - tailwind-merge: ^2.6.0
+      │    - tailwindcss-animate: ^1.0.7
+      │    - tw-animate-css: ^1.2.5
+      │    - vaul: ^1.1.2
+      │    - wouter: ^3.3.5
+      │    - ws: ^8.18.0
+      │    - zod: ^3.24.2
+      │    - zod-validation-error: ^3.4.0
+      │    - @replit/vite-plugin-cartographer: ^0.4.2
+      │    - @replit/vite-plugin-dev-banner: ^0.1.1
+      │    - @replit/vite-plugin-runtime-error-modal: ^0.0.3
+      │    - @tailwindcss/typography: ^0.5.15
+      │    - @tailwindcss/vite: ^4.1.3
+      │    - @types/connect-pg-simple: ^7.0.3
+      │    - @types/express: 4.17.21
+      │    - @types/express-session: ^1.18.0
+      │    - @types/node: 20.16.11
+      │    - @types/passport: ^1.0.16
+      │    - @types/passport-local: ^1.0.38
+      │    - @types/react: ^18.3.11
+      │    - @types/react-dom: ^18.3.1
+      │    - @types/ws: ^8.5.13
+      │    - @vitejs/plugin-react: ^4.7.0
+      │    - autoprefixer: ^10.4.20
+      │    - drizzle-kit: ^0.31.4
+      │    - esbuild: ^0.25.0
+      │    - postcss: ^8.4.47
+      │    - tailwindcss: ^3.4.17
+      │    - tsx: ^4.20.5
+      │    - typescript: 5.6.3
+      │    - vite: ^5.4.20
+
+📁 REPO: Eagle_View
+   📄 back-end/package-lock.json [npm lock]
+   📄 back-end/package.json [Node.js]
+      ├── Dependencies: 17
+      │    - axios: ^1.7.7
+      │    - compression: ^1.8.0
+      │    - cors: ^2.8.5
+      │    - crypto: ^1.0.1
+      │    - dotenv: ^16.4.5
+      │    - express: ^4.21.2
+      │    - kiteconnect: ^5.0.1
+      │    - moment: ^2.30.1
+      │    - mongodb: ^6.9.0
+      │    - mongoose: ^8.7.1
+      │    - node-cron: ^4.1.0
+      │    - nodemon: ^3.1.10
+      │    - razorpay: ^2.9.6
+      │    - redis: ^5.5.6
+      │    - socket.io: ^4.8.1
+      │    - vercel: ^41.7.0
+      │    - ws: ^8.18.3
+   📄 front-end/package-lock.json [npm lock]
+   📄 front-end/package.json [Node.js]
+      ├── Dependencies: 55
+      │    - @coreui/icons: ^3.0.1
+      │    - @coreui/icons-react: ^2.3.0
+      │    - @emailjs/browser: ^4.4.1
+      │    - @fortawesome/free-regular-svg-icons: ^6.6.0
+      │    - @fortawesome/free-solid-svg-icons: ^6.6.0
+      │    - @fortawesome/react-fontawesome: ^0.2.2
+      │    - @google/generative-ai: ^0.24.1
+      │    - @heroicons/react: ^2.2.0
+      │    - @nivo/bar: ^0.88.0
+      │    - @nivo/core: ^0.88.0
+      │    - @nivo/radar: ^0.88.0
+      │    - @nivo/treemap: ^0.88.0
+      │    - @react-spring/web: ^10.0.0
+      │    - @react-three/drei: ^9.122.0
+      │    - @react-three/fiber: ^8.18.0
+      │    - @reduxjs/toolkit: ^2.2.7
+      │    - @testing-library/jest-dom: ^5.17.0
+      │    - @testing-library/react: ^13.4.0
+      │    - @testing-library/user-event: ^13.5.0
+      │    - axios: ^1.9.0
+      │    - buffer: ^6.0.3
+      │    - chart.js: ^4.4.9
+      │    - date-fns: ^4.1.0
+      │    - debounce: ^2.1.1
+      │    - dotenv: ^16.5.0
+      │    - firebase: ^10.14.0
+      │    - framer-motion: ^12.19.2
+      │    - lightweight-charts: ^5.0.8
+      │    - lodash: ^4.17.21
+      │    - lucide-react: ^0.509.0
+      │    - mongodb: ^6.17.0
+      │    - mongoose: ^8.15.1
+      │    - protobufjs: ^7.5.3
+      │    - razorpay: ^2.9.6
+      │    - react: ^18.3.1
+      │    - react-chartjs-2: ^5.3.0
+      │    - react-confetti: ^6.4.0
+      │    - react-dom: ^18.3.1
+      │    - react-icons: ^5.2.1
+      │    - react-lottie: ^1.2.10
+      │    - react-markdown: ^10.1.0
+      │    - react-redux: ^9.1.2
+      │    - react-router-dom: ^6.30.0
+      │    - react-scripts: 5.0.1
+      │    - react-spring: ^9.7.5
+      │    - react-toastify: ^11.0.5
+      │    - react-tooltip: ^5.28.1
+      │    - socket.io-client: ^4.8.1
+      │    - three: ^0.179.1
+      │    - upstox: ^2.0.0
+      │    - upstox-js-sdk: ^2.8.0
+      │    - web-vitals: ^2.1.4
+      │    - ws: ^8.18.2
+      │    - xlsx: ^0.18.5
+      │    - tailwindcss: ^3.4.7
+
+📁 REPO: Hive-Technologies
+   📄 front-end/package-lock.json [npm lock]
+   📄 front-end/package.json [Node.js]
+      ├── Dependencies: 10
+      │    - @testing-library/dom: ^10.4.1
+      │    - @testing-library/jest-dom: ^6.8.0
+      │    - @testing-library/react: ^16.3.0
+      │    - @testing-library/user-event: ^13.5.0
+      │    - framer-motion: ^12.23.26
+      │    - react: ^19.1.1
+      │    - react-dom: ^19.1.1
+      │    - react-scripts: 5.0.1
+      │    - web-vitals: ^2.1.4
+      │    - tailwindcss: ^3.4.17
+
+📁 REPO: HPCL-Forms
+   📄 back-end/demo/pom.xml [Java / Spring]
+      ├── Dependencies: 9
+      │    - org.springframework.boot:spring-boot-starter-data-jpa: managed
+      │    - org.springframework.boot:spring-boot-starter-security: managed
+      │    - org.springframework.boot:spring-boot-starter-web: managed
+      │    - org.springframework.boot:spring-boot-devtools: managed
+      │    - com.mysql:mysql-connector-j: managed
+      │    - org.springframework.boot:spring-boot-starter-test: managed
+      │    - org.springframework.security:spring-security-test: managed
+      │    - org.projectlombok:lombok: managed
+      │    - com.fasterxml.jackson.core:jackson-databind: 2.15.2
+   📄 front-end/demo/package-lock.json [npm lock]
+   📄 front-end/demo/package.json [Node.js]
+      ├── Dependencies: 18
+      │    - @testing-library/dom: ^10.4.0
+      │    - @testing-library/jest-dom: ^6.6.3
+      │    - @testing-library/react: ^16.3.0
+      │    - @testing-library/user-event: ^13.5.0
+      │    - axios: ^1.9.0
+      │    - lucide-react: ^0.514.0
+      │    - react: ^19.1.0
+      │    - react-dom: ^19.1.0
+      │    - react-icons: ^5.5.0
+      │    - react-router-dom: ^7.6.2
+      │    - react-scripts: 5.0.1
+      │    - react-virtualized: ^9.22.6
+      │    - react-virtualized-auto-sizer: ^1.0.26
+      │    - react-window: ^1.8.11
+      │    - uuid: ^11.1.0
+      │    - web-vitals: ^2.1.4
+      │    - xlsx: ^0.18.5
+      │    - tailwindcss: ^3.4.17
+
+📁 REPO: Lumi
+   📄 Lumi-main/lumi/package-lock.json [npm lock]
+   📄 Lumi-main/lumi/package.json [Node.js]
+      ├── Dependencies: 18
+      │    - dotenv: ^17.2.3
+      │    - express: ^5.1.0
+      │    - next: 15.5.4
+      │    - node-fetch: ^3.3.2
+      │    - node-pre-gyp: ^0.17.0
+      │    - openai: ^6.3.0
+      │    - react: 19.1.0
+      │    - react-dom: 19.1.0
+      │    - ws: ^8.18.3
+      │    - @eslint/eslintrc: ^3
+      │    - @tailwindcss/postcss: ^4
+      │    - @types/node: ^20
+      │    - @types/react: ^19
+      │    - @types/react-dom: ^19
+      │    - eslint: ^9
+      │    - eslint-config-next: 15.5.4
+      │    - tailwindcss: ^4
+      │    - typescript: ^5
+   📄 Lumi-main/server/package-lock.json [npm lock]
+   📄 Lumi-main/server/package.json [Node.js]
+      ├── Dependencies: 2
+      │    - dotenv: ^17.2.3
+      │    - ws: ^8.18.3
+   📄 backend/package-lock.json [npm lock]
+   📄 backend/package.json [Node.js]
+      ├── Dependencies: 15
+      │    - @prisma/client: ^6.19.0
+      │    - bcryptjs: ^3.0.3
+      │    - cors: ^2.8.5
+      │    - dotenv: ^17.2.3
+      │    - express: ^5.1.0
+      │    - jsonwebtoken: ^9.0.2
+      │    - multer: ^2.0.2
+      │    - zod: ^4.1.12
+      │    - @types/express: ^5.0.5
+      │    - @types/jsonwebtoken: ^9.0.10
+      │    - @types/multer: ^2.0.0
+      │    - @types/node: ^24.10.1
+      │    - prisma: ^6.19.0
+      │    - ts-node-dev: ^2.0.0
+      │    - typescript: ^5.9.3
+   📄 frontend/package-lock.json [npm lock]
+   📄 frontend/package.json [Node.js]
+      ├── Dependencies: 18
+      │    - @tailwindcss/vite: ^4.1.17
+      │    - @tanstack/react-query: ^5.90.10
+      │    - react: ^19.2.0
+      │    - react-dom: ^19.2.0
+      │    - react-router-dom: ^7.9.6
+      │    - tailwindcss: ^4.1.17
+      │    - @eslint/js: ^9.39.1
+      │    - @types/node: ^24.10.0
+      │    - @types/react: ^19.2.2
+      │    - @types/react-dom: ^19.2.2
+      │    - @vitejs/plugin-react: ^5.1.0
+      │    - eslint: ^9.39.1
+      │    - eslint-plugin-react-hooks: ^7.0.1
+      │    - eslint-plugin-react-refresh: ^0.4.24
+      │    - globals: ^16.5.0
+      │    - typescript: ~5.9.3
+      │    - typescript-eslint: ^8.46.3
+      │    - vite: ^7.2.2
+
+📁 REPO: RECRUT
+   📄 backend/package-lock.json [npm lock]
+   📄 backend/package.json [Node.js]
+      ├── Dependencies: 18
+      │    - @google/generative-ai: ^0.24.1
+      │    - @prisma/client: ^6.19.0
+      │    - bcryptjs: ^3.0.3
+      │    - cors: ^2.8.5
+      │    - dotenv: ^17.2.3
+      │    - express: ^5.1.0
+      │    - jsonwebtoken: ^9.0.2
+      │    - multer: ^2.0.2
+      │    - openai: ^6.15.0
+      │    - python-shell: ^5.0.0
+      │    - zod: ^4.1.12
+      │    - @types/express: ^5.0.5
+      │    - @types/jsonwebtoken: ^9.0.10
+      │    - @types/multer: ^2.0.0
+      │    - @types/node: ^24.10.1
+      │    - prisma: ^6.19.0
+      │    - ts-node-dev: ^2.0.0
+      │    - typescript: ^5.9.3
+   📄 backend/requirements.txt [Python]
+      ├── Dependencies: 3
+      │    - ultralytics: ultralytics
+      │    - opencv-python-headless: opencv-python-headless
+      │    - requests: requests
+   📄 frontend/package-lock.json [npm lock]
+   📄 frontend/package.json [Node.js]
+      ├── Dependencies: 28
+      │    - @abandonware/noble: ^1.9.2-26
+      │    - @tailwindcss/vite: ^4.1.17
+      │    - @tanstack/react-query: ^5.90.10
+      │    - framer-motion: ^12.23.24
+      │    - lodash: ^4.17.21
+      │    - lucide-react: ^0.554.0
+      │    - node-wifi: ^2.0.16
+      │    - react: ^19.2.0
+      │    - react-dom: ^19.2.0
+      │    - react-router-dom: ^7.9.6
+      │    - tailwindcss: ^4.1.17
+      │    - @eslint/js: ^9.39.1
+      │    - @types/node: ^24.10.0
+      │    - @types/node-wifi: ^2.0.2
+      │    - @types/react: ^19.2.2
+      │    - @types/react-dom: ^19.2.2
+      │    - @vitejs/plugin-react: ^5.1.0
+      │    - concurrently: ^9.2.1
+      │    - cross-env: ^10.1.0
+      │    - electron: ^39.2.7
+      │    - eslint: ^9.39.1
+      │    - eslint-plugin-react-hooks: ^7.0.1
+      │    - eslint-plugin-react-refresh: ^0.4.24
+      │    - globals: ^16.5.0
+      │    - typescript: ~5.9.3
+      │    - typescript-eslint: ^8.46.3
+      │    - vite: ^7.2.2
+      │    - wait-on: ^9.0.3
+
+📁 REPO: RECRUT2.0
+   📄 backend/package-lock.json [npm lock]
+   📄 backend/package.json [Node.js]
+      ├── Dependencies: 18
+      │    - @google/generative-ai: ^0.24.1
+      │    - @prisma/client: ^6.19.0
+      │    - bcryptjs: ^3.0.3
+      │    - cors: ^2.8.5
+      │    - dotenv: ^17.2.3
+      │    - express: ^5.1.0
+      │    - jsonwebtoken: ^9.0.2
+      │    - multer: ^2.0.2
+      │    - openai: ^6.15.0
+      │    - python-shell: ^5.0.0
+      │    - zod: ^4.1.12
+      │    - @types/express: ^5.0.5
+      │    - @types/jsonwebtoken: ^9.0.10
+      │    - @types/multer: ^2.0.0
+      │    - @types/node: ^24.10.1
+      │    - prisma: ^6.19.0
+      │    - ts-node-dev: ^2.0.0
+      │    - typescript: ^5.9.3
+   📄 backend/requirements.txt [Python]
+      ├── Dependencies: 3
+      │    - ultralytics: ultralytics
+      │    - opencv-python-headless: opencv-python-headless
+      │    - requests: requests
+   📄 frontend/package-lock.json [npm lock]
+   📄 frontend/package.json [Node.js]
+      ├── Dependencies: 29
+      │    - @abandonware/noble: ^1.9.2-26
+      │    - @monaco-editor/react: ^4.7.0
+      │    - @tailwindcss/vite: ^4.1.17
+      │    - @tanstack/react-query: ^5.90.10
+      │    - framer-motion: ^12.23.24
+      │    - lodash: ^4.17.21
+      │    - lucide-react: ^0.554.0
+      │    - node-wifi: ^2.0.16
+      │    - react: ^19.2.0
+      │    - react-dom: ^19.2.0
+      │    - react-router-dom: ^7.9.6
+      │    - tailwindcss: ^4.1.17
+      │    - @eslint/js: ^9.39.1
+      │    - @types/node: ^24.10.0
+      │    - @types/node-wifi: ^2.0.2
+      │    - @types/react: ^19.2.2
+      │    - @types/react-dom: ^19.2.2
+      │    - @vitejs/plugin-react: ^5.1.0
+      │    - concurrently: ^9.2.1
+      │    - cross-env: ^10.1.0
+      │    - electron: ^39.2.7
+      │    - eslint: ^9.39.1
+      │    - eslint-plugin-react-hooks: ^7.0.1
+      │    - eslint-plugin-react-refresh: ^0.4.24
+      │    - globals: ^16.5.0
+      │    - typescript: ~5.9.3
+      │    - typescript-eslint: ^8.46.3
+      │    - vite: ^7.2.2
+      │    - wait-on: ^9.0.3
+   📄 resume-parser/package-lock.json [npm lock]
+   📄 resume-parser/package.json [Node.js]
+      ├── Dependencies: 4
+      │    - @google/generative-ai: ^0.24.1
+      │    - dotenv: ^17.2.3
+      │    - fs: ^0.0.1-security
+      │    - pdf-parse: ^1.1.1
+
+📁 REPO: The-House-Of-Pool
+   📄 package-lock.json [npm lock]
+   📄 package.json [Node.js]
+      ├── Dependencies: 25
+      │    - antd: ^5.23.4
+      │    - axios: ^1.7.9
+      │    - bcryptjs: ^2.4.3
+      │    - cors: ^2.8.5
+      │    - cra-template: 1.2.0
+      │    - dayjs: ^1.11.13
+      │    - dotenv: ^16.4.7
+      │    - express: ^4.21.2
+      │    - firebase: ^11.3.1
+      │    - jsonwebtoken: ^9.0.2
+      │    - moment: ^2.30.1
+      │    - postcss: ^8.5.2
+      │    - react: ^19.0.0
+      │    - react-dom: ^19.0.0
+      │    - react-firebase-hooks: ^5.1.1
+      │    - react-icons: ^5.4.0
+      │    - react-redux: ^9.2.0
+      │    - react-router-dom: ^7.1.5
+      │    - react-scripts: 5.0.1
+      │    - react-toastify: ^11.0.3
+      │    - redux: ^5.0.1
+      │    - redux-thunk: ^3.1.0
+      │    - uuid: ^11.0.5
+      │    - @tailwindcss/postcss: ^4.0.6
+      │    - tailwindcss: ^3.4.17
+
+✅ SCAN COMPLETE

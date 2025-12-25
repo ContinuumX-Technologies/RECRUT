@@ -1,0 +1,33 @@
+.morphing-recorder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  
+  .morphing-recorder canvas {
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, #0f172a, #020617);
+    box-shadow:
+      0 0 80px rgba(0, 255, 200, 0.25),
+      inset 0 0 60px rgba(0, 255, 200, 0.15);
+  }
+  
+  .record-btn {
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: none;
+    background: #0ea5e9;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  
+  .record-btn.active {
+    background: #ef4444;
+    transform: scale(1.05);
+  }
+  
