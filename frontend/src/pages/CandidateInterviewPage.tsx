@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo, type JSX } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import MorphingVoiceRecorder from '../voice-visualizer/MorphingVoiceRecorder';
+import AudioVisualizerCard from '../components/AudioVizualiser';
 import { ProctoredShell } from '../components/ProctoredShell';
 import { useProctorAlerts } from '../hooks/useProctorAlert';
 import { useProctor } from '../hooks/useProctor';
@@ -272,6 +272,53 @@ export function CandidateInterviewPage() {
   const alert = useProctorAlerts(interviewId);
   useProctor(interviewId, setupComplete && config ? config.proctorConfig : null);
 
+  // Add this state near other state declarations
+  const [configLoaded, setConfigLoaded] = useState(false);
+
+  // Replace the fetchConfig function
+  const fetchConfig = useCallback(async (silent = false) => {
+    // Prevent re-fetching after initial load
+    if (configLoaded && silent) {
+      console.log('Config already loaded, skipping refetch');
+      return;
+    }
+
+    if (!interviewId) {
+      if (!silent) {
+        setError("Invalid interview ID");
+        setLoading(false);
+      }
+      return;
+    }
+
+    try {
+      if (!silent) setLoading(true);
+
+      const res = await fetch(`${API_BASE}/api/interviews/${interviewId}/config`);
+
+      if (!res.ok) {
+        throw new Error(`Failed to load interview: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      // Only set config on first load, or if forced
+      if (!configLoaded) {
+        setConfig({
+          ...data,
+          questions: Array.isArray(data.questions) ? data.questions : [],
+        });
+        setConfigLoaded(true);
+      }
+
+      if (!silent) setError(null);
+    } catch (e) {
+      console.error('Config fetch error:', e);
+      if (!silent) setError("Unable to load interview. Please try again.");
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [interviewId, configLoaded]);
   // ==========================================
   // EFFECTS
   // ==========================================
@@ -333,45 +380,6 @@ export function CandidateInterviewPage() {
     };
   }, [setupComplete]);
 
-  // Fetch configuration
-  const fetchConfig = useCallback(async (silent = false) => {
-    if (!interviewId) {
-      if (!silent) {
-        setError("Invalid interview ID");
-        setLoading(false);
-      }
-      return;
-    }
-
-    try {
-      if (!silent) setLoading(true);
-
-      const res = await fetch(`${API_BASE}/api/interviews/${interviewId}/config`);
-
-      if (!res.ok) {
-        throw new Error(`Failed to load interview: ${res.status}`);
-      }
-
-      const data = await res.json();
-
-      setConfig(prev => {
-        if (JSON.stringify(prev?.questions) === JSON.stringify(data.questions)) {
-          return prev;
-        }
-        return {
-          ...data,
-          questions: Array.isArray(data.questions) ? data.questions : [],
-        };
-      });
-
-      if (!silent) setError(null);
-    } catch (e) {
-      console.error('Config fetch error:', e);
-      if (!silent) setError("Unable to load interview. Please try again.");
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [interviewId]);
 
   useEffect(() => {
     fetchConfig();
@@ -428,21 +436,27 @@ export function CandidateInterviewPage() {
   }, [setupComplete, isSubmitting]);
 
   // ==========================================
-  // MEMOIZED VALUES
+  // MEMOIZED VALUES - Fixed
   // ==========================================
 
+  const questions = useMemo(() =>
+    config?.questions ?? [],
+    [config?.questions]
+  );
+
+  const totalQuestions = questions.length;
+
   const currentQuestion = useMemo(() =>
-    config?.questions[currentIndex],
-    [config, currentIndex]
+    questions[currentIndex],
+    [questions, currentIndex]
   );
 
   const progress = useMemo(() =>
-    config ? ((currentIndex + 1) / config.questions.length) * 100 : 0,
-    [config, currentIndex]
+    totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0,
+    [totalQuestions, currentIndex]
   );
 
   const isCodeQuestion = currentQuestion?.type === 'code';
-  const totalQuestions = config?.questions.length || 0;
   const isLastQuestion = currentIndex >= totalQuestions - 1;
 
   // ==========================================
@@ -469,18 +483,27 @@ export function CandidateInterviewPage() {
   }, [currentQuestion, currentIndex]);
 
   const handleNext = useCallback(() => {
-    if (config && currentIndex < config.questions.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-      setCodeOutput(null);
-    }
-  }, [config, currentIndex]);
+    setCurrentIndex(prev => {
+      const nextIndex = prev + 1;
+      if (nextIndex >= totalQuestions) {
+        console.warn('Attempted to navigate past last question');
+        return prev;
+      }
+      return nextIndex;
+    });
+    setCodeOutput(null);
+  }, [totalQuestions]);
 
   const handlePrev = useCallback(() => {
-    if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-      setCodeOutput(null);
-    }
-  }, [currentIndex]);
+    setCurrentIndex(prev => {
+      if (prev <= 0) {
+        console.warn('Attempted to navigate before first question');
+        return prev;
+      }
+      return prev - 1;
+    });
+    setCodeOutput(null);
+  }, []);
 
   const handleFinish = useCallback(() => {
     setShowExitConfirm(true);
@@ -511,11 +534,13 @@ export function CandidateInterviewPage() {
   }, [interviewId, navigate, answers]);
 
   const handleQuestionSelect = useCallback((index: number) => {
-    if (index >= 0 && index < totalQuestions) {
-      setCurrentIndex(index);
-      setCodeOutput(null);
-      setShowSidebar(false);
+    if (index < 0 || index >= totalQuestions) {
+      console.warn(`Invalid question index: ${index}, total: ${totalQuestions}`);
+      return;
     }
+    setCurrentIndex(index);
+    setCodeOutput(null);
+    setShowSidebar(false);
   }, [totalQuestions]);
 
   const handleRunCode = useCallback(() => {
@@ -550,19 +575,23 @@ export function CandidateInterviewPage() {
 
   const renderQuestionList = () => (
     <div className="question-list">
-      {config?.questions.map((q, index) => {
+      {questions.map((q, index) => {
         const isCurrent = index === currentIndex;
         const isAnswered = answeredQuestions.has(index);
 
         return (
           <button
-            key={q.id}
-            className={`question-list__item ${isCurrent ? 'question-list__item--active' : ''} ${isAnswered ? 'question-list__item--answered' : ''}`}
+            key={`question-${q.id}`} // Use stable ID, not index
+            className={`question-list__item ${isCurrent ? 'question-list__item--active' : ''
+              } ${isAnswered ? 'question-list__item--answered' : ''
+              }`}
             onClick={() => handleQuestionSelect(index)}
           >
             <span className="question-list__number">{index + 1}</span>
             <span className="question-list__icon">{getQuestionTypeIcon(q.type)}</span>
-            <span className="question-list__text">{q.text.substring(0, 30)}...</span>
+            <span className="question-list__text">
+              {q.text.length > 30 ? `${q.text.substring(0, 30)}...` : q.text}
+            </span>
             {isAnswered && (
               <span className="question-list__check">
                 <Icons.Check />
@@ -780,15 +809,92 @@ export function CandidateInterviewPage() {
                 {!isCodeQuestion && (
                   <div className="apple-answer">
                     {currentQuestion?.type === 'audio' && (
-                      <MorphingVoiceRecorder
-                        onComplete={() => {
-                          setAnsweredQuestions(prev => new Set(prev).add(currentIndex));
-                          setTimeout(() => fetchConfig(true), 2000);
-                        }}
-                      />
+                      <div className="apple-audio-section">
+                        {/* Prompt Header */}
+                        <div className="apple-audio-prompt">
+                          <div className="apple-audio-prompt__icon">
+                            <Icons.Mic />
+                          </div>
+                          <h3 className="apple-audio-prompt__title">Voice Response</h3>
+                          <p className="apple-audio-prompt__subtitle">
+                            Take your time to think, then speak clearly into your microphone.
+                          </p>
+
+                          <div className="apple-audio-tips">
+                            <span className="apple-audio-tip">
+                              <Icons.Check /> Speak naturally
+                            </span>
+                            <span className="apple-audio-tip">
+                              <Icons.Check /> Stay on topic
+                            </span>
+                            <span className="apple-audio-tip">
+                              <Icons.Check /> No time limit
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Audio Visualizer */}
+                        <AudioVisualizerCard
+                          variant="default"
+                          showControls={true}
+                          accentColor="#0071e3"
+                          onRecordingStart={() => {
+                            console.log('Recording started');
+                          }}
+                          onRecordingStop={(duration) => {
+                            console.log('Recording stopped, duration:', duration);
+                            setAnsweredQuestions(prev => new Set(prev).add(currentIndex));
+                            handleAnswerChange(`audio_response_${duration}s`);
+                          }}
+                          onAudioLevel={(level) => {
+                            // Optional: use audio level for other UI feedback
+                          }}
+                        />
+
+                        {/* Optional: Show completion state after recording */}
+                        {answeredQuestions.has(currentIndex) && (
+                          <div className="apple-audio-complete">
+                            <div className="apple-audio-complete__icon">
+                              <Icons.Check />
+                            </div>
+                            <h4 className="apple-audio-complete__title">Response Recorded</h4>
+                            <p className="apple-audio-complete__duration">
+                              Your voice response has been saved
+                            </p>
+                            <div className="apple-audio-complete__actions">
+                              <button
+                                className="apple-btn apple-btn--secondary"
+                                onClick={() => {
+                                  setAnsweredQuestions(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(currentIndex);
+                                    return next;
+                                  });
+                                  // Clear the answer too
+                                  if (currentQuestion) {
+                                    setAnswers(prev => {
+                                      const next = { ...prev };
+                                      delete next[currentQuestion.id];
+                                      return next;
+                                    });
+                                  }
+                                }}
+                              >
+                                <Icons.RotateCcw />
+                                <span>Re-record</span>
+                              </button>
+                              <button
+                                className="apple-btn apple-btn--primary"
+                                onClick={isLastQuestion ? handleFinish : handleNext}
+                              >
+                                <span>{isLastQuestion ? 'Submit' : 'Continue'}</span>
+                                <Icons.ChevronRight />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
-
-
                     {currentQuestion?.type === 'text' && (
                       <textarea
                         value={answers[currentQuestion.id] || ''}
@@ -836,21 +942,38 @@ export function CandidateInterviewPage() {
                     <span>Previous</span>
                   </button>
 
+                  {/* Replace the dots section in apple-nav-controls */}
                   <div className="apple-dots">
-                    {config?.questions.slice(
-                      Math.max(0, currentIndex - 2),
-                      Math.min(totalQuestions, currentIndex + 3)
-                    ).map((_, i) => {
-                      const actualIndex = Math.max(0, currentIndex - 2) + i;
-                      return (
+                    {(() => {
+                      // Calculate visible range (show 5 dots max, centered on current)
+                      const maxVisible = 5;
+                      const halfVisible = Math.floor(maxVisible / 2);
+
+                      let startIndex = Math.max(0, currentIndex - halfVisible);
+                      let endIndex = Math.min(totalQuestions, startIndex + maxVisible);
+
+                      // Adjust start if we're near the end
+                      if (endIndex - startIndex < maxVisible) {
+                        startIndex = Math.max(0, endIndex - maxVisible);
+                      }
+
+                      const visibleIndices: number[] = [];
+                      for (let i = startIndex; i < endIndex; i++) {
+                        visibleIndices.push(i);
+                      }
+
+                      return visibleIndices.map((questionIndex) => (
                         <button
-                          key={actualIndex}
-                          className={`apple-dot ${actualIndex === currentIndex ? 'apple-dot--active' : ''} ${answeredQuestions.has(actualIndex) ? 'apple-dot--answered' : ''}`}
-                          onClick={() => handleQuestionSelect(actualIndex)}
-                          aria-label={`Go to question ${actualIndex + 1}`}
+                          key={`dot-${questionIndex}-${questions[questionIndex]?.id || questionIndex}`}
+                          className={`apple-dot ${questionIndex === currentIndex ? 'apple-dot--active' : ''
+                            } ${answeredQuestions.has(questionIndex) ? 'apple-dot--answered' : ''
+                            }`}
+                          onClick={() => handleQuestionSelect(questionIndex)}
+                          aria-label={`Go to question ${questionIndex + 1}`}
+                          aria-current={questionIndex === currentIndex ? 'step' : undefined}
                         />
-                      );
-                    })}
+                      ));
+                    })()}
                   </div>
 
                   <button
