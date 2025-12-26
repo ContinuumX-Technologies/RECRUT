@@ -435,6 +435,20 @@ export function CandidateInterviewPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [setupComplete, isSubmitting]);
 
+  async function apiFetch<T>(url: string, body: any): Promise<T> {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      throw new Error(`Request failed: ${res.status}`);
+    }
+
+    return res.json();
+  }
+
   // ==========================================
   // MEMOIZED VALUES - Fixed
   // ==========================================
@@ -543,15 +557,45 @@ export function CandidateInterviewPage() {
     setShowSidebar(false);
   }, [totalQuestions]);
 
-  const handleRunCode = useCallback(() => {
-    setConsoleTab('result');
-    setCodeOutput({
-      success: true,
-      output: currentQuestion?.testCases?.[0]?.output || 'No output',
-      runtime: '52 ms',
-      memory: '42.1 MB'
-    });
-  }, [currentQuestion]);
+  const handleRunCode = useCallback(async () => {
+    if (!currentQuestion || !answers[currentQuestion.id]) return;
+
+    setConsoleTab("result");
+    setCodeOutput(null);
+
+    try {
+      const res = await apiFetch<{
+        testResults: {
+          input: string;
+          expected: string;
+          actual: string;
+          passed: boolean;
+          timeMs?: number;
+        }[];
+      }>(`${API_BASE}/api/judge/run`, {
+        code: answers[currentQuestion.id],
+        language: currentQuestion.language || "javascript",
+        testCases: currentQuestion.testCases || []
+      });
+
+      const failed = res.testResults.find(t => !t.passed);
+
+      setCodeOutput({
+        success: !failed,
+        output: failed
+          ? `Input: ${failed.input}\nExpected: ${failed.expected}\nGot: ${failed.actual}`
+          : "All test cases passed!",
+        runtime: `${Math.max(...res.testResults.map(t => t.timeMs || 0))} ms`,
+        memory: "—"
+      });
+    } catch (err: any) {
+      setCodeOutput({
+        success: false,
+        output: err.message || "Runtime error"
+      });
+    }
+  }, [currentQuestion, answers]);
+
 
   const handleResetCode = useCallback(() => {
     if (currentQuestion?.starterCode) {
@@ -1013,7 +1057,43 @@ export function CandidateInterviewPage() {
                       <Icons.Play />
                       <span>Run</span>
                     </button>
-                    <button className="apple-btn apple-btn--primary">
+                    <button
+                      className="apple-btn apple-btn--primary"
+                      onClick={async () => {
+                        if (!currentQuestion || !answers[currentQuestion.id]) return;
+
+                        setConsoleTab("result");
+                        setCodeOutput(null);
+
+                        try {
+                          const res = await apiFetch<{
+                            status: "Accepted" | "Wrong Answer";
+                            timeMs?: number;
+                            memoryMb?: number;
+                          }>(`${API_BASE}/api/judge/submit`, {
+                            code: answers[currentQuestion.id],
+                            language: currentQuestion.language || "javascript",
+                            questionId: currentQuestion.id
+                          });
+
+                          setCodeOutput({
+                            success: res.status === "Accepted",
+                            output: res.status,
+                            runtime: res.timeMs ? `${res.timeMs} ms` : undefined,
+                            memory: res.memoryMb ? `${res.memoryMb} MB` : undefined
+                          });
+
+                          if (res.status === "Accepted") {
+                            setAnsweredQuestions(prev => new Set(prev).add(currentIndex));
+                          }
+                        } catch (err: any) {
+                          setCodeOutput({
+                            success: false,
+                            output: err.message || "Submission failed"
+                          });
+                        }
+                      }}
+                    >
                       <Icons.Send />
                       <span>Submit</span>
                     </button>
