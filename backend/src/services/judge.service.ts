@@ -6,47 +6,22 @@ import { prisma } from "../lib/prisma";
  * RUN → visible test cases only
  */
 export async function runCode(req: Request, res: Response) {
-  const { code, language, questionId } = req.body;
+  const { code, language, testCases } = req.body;
 
-  if (!code || !questionId) {
-    return res.status(400).json({ error: "code and questionId required" });
+  // FIX: Ensure testCases is an iterable array
+  if (!Array.isArray(testCases)) {
+    return res.status(400).json({ error: "testCases must be an array" });
   }
 
-  // 1️⃣ Fetch interviews that have customConfig or template
-  const interviews = await prisma.interview.findMany({
-    include: { template: true }
-  });
-
-  // 2️⃣ Find question in JS (SQLite-safe)
-  let foundQuestion: any = null;
-
-  for (const interview of interviews) {
-    const config =
-      (interview.customConfig as any) ||
-      (interview.template?.config as any);
-
-    if (!config?.questions) continue;
-
-    const q = config.questions.find((x: any) => x.id === questionId);
-    if (q) {
-      foundQuestion = q;
-      break;
-    }
-  }
-
-  if (!foundQuestion || !Array.isArray(foundQuestion.testCases)) {
-    return res.json({ testResults: [] });
-  }
-
-  // 3️⃣ Run visible test cases
   const results = [];
 
-  for (const tc of foundQuestion.testCases) {
+  for (const tc of testCases) {
     try {
+      // Pass tc.input as a string to the docker executor
       const { output, timeMs } = await executeInDocker(
         language,
         code,
-        tc.input
+        typeof tc.input === 'string' ? tc.input : JSON.stringify(tc.input)
       );
 
       results.push({
@@ -72,57 +47,50 @@ export async function runCode(req: Request, res: Response) {
  * SUBMIT → hidden test cases ONLY (from DB)
  */
 export async function submitCode(req: Request, res: Response) {
-  const { code, language, questionId } = req.body;
+  // Add interviewId to the destructuring (get it from the frontend)
+  const { code, language, questionId, interviewId } = req.body;
 
-  if (!code || !language || !questionId) {
+  if (!code || !language || !questionId || !interviewId) {
     return res.status(400).json({ error: "Invalid submission payload" });
   }
 
-  const hiddenTestCases = await getHiddenTestCases(questionId);
+  try {
+    const hiddenTestCases = await getHiddenTestCases(interviewId, questionId);
+    let totalTime = 0;
 
-  let totalTime = 0;
+    for (const tc of hiddenTestCases) {
+      const { output, timeMs } = await executeInDocker(language, code, tc.input);
+      totalTime += timeMs;
 
-  for (const tc of hiddenTestCases) {
-    const { output, timeMs } = await executeInDocker(
-      language,
-      code,
-      tc.input
-    );
-
-    totalTime += timeMs;
-
-    if (output.trim() !== tc.output.trim()) {
-      return res.json({ status: "Wrong Answer" });
+      if (output.trim() !== tc.output.trim()) {
+        return res.json({ status: "Wrong Answer" });
+      }
     }
-  }
 
-  return res.json({
-    status: "Accepted",
-    timeMs: totalTime,
-    memoryMb: 256
-  });
+    return res.json({ status: "Accepted", timeMs: totalTime, memoryMb: 256 });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
 }
 
-async function getHiddenTestCases(questionId: string) {
-  const interviews = await prisma.interview.findMany({
+async function getHiddenTestCases(interviewId: string, questionId: string) {
+  // 1. Fetch the interview record using a simple ID lookup (SQLite safe)
+  const interview = await prisma.interview.findUnique({
+    where: { id: interviewId },
     include: { template: true }
   });
 
-  for (const interview of interviews) {
-    const config =
-      (interview.customConfig as any) ||
-      (interview.template?.config as any);
+  if (!interview) throw new Error("Interview not found");
 
-    if (!config?.questions) continue;
+  // 2. Extract configuration from the JSON field manually
+  const config = (interview.customConfig as any) || (interview.template?.config as any);
+  
+  // 3. Find the specific question in the array
+  const question = config?.questions?.find((q: any) => q.id === questionId);
 
-    const question = config.questions.find(
-      (q: any) => q.id === questionId
-    );
-
-    if (question?.hiddenTestCases) {
-      return question.hiddenTestCases;
-    }
+  if (!question?.hiddenTestCases) {
+    throw new Error("Hidden test cases not found for this question");
   }
 
-  throw new Error("Hidden test cases not found");
+  return question.hiddenTestCases;
 }

@@ -9,6 +9,8 @@ export type RunResult = {
     expected: string;
     actual: string;
     passed: boolean;
+    timeMs?: number; // Added to match backend response
+    error?: string;  // Added to match backend catch block
   }[];
 };
 
@@ -25,10 +27,12 @@ export type SubmitResult = {
   memoryMb: number;
 };
 
+// Updated to include testCases array required by judge.service.ts
 export const runCode = (payload: {
   questionId: string;
   language: string;
   code: string;
+  testCases: { input: string; output: string }[]; 
 }) =>
   axios.post<RunResult>(`${API_BASE}/api/judge/run`, payload);
 

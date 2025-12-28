@@ -7,13 +7,16 @@ type Props = {
   language: "javascript" | "python";
   value: string;
   onChange: (val: string) => void;
+  // FIX: Added testCases prop to match the new API requirement
+  testCases: { input: string; output: string }[];
 };
 
 export default function EmbeddedIDE({
   questionId,
   language,
   value,
-  onChange
+  onChange,
+  testCases // FIX: Destructure testCases here
 }: Props) {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -30,7 +33,8 @@ export default function EmbeddedIDE({
       const res = await runCode({
         questionId,
         language,
-        code: value
+        code: value,
+        testCases
       });
 
       setResult(res.data);
@@ -92,13 +96,13 @@ export default function EmbeddedIDE({
       <div style={{ height: "360px" }}>
         <Editor
           theme="vs-dark"
-          language={language}
+          language={language} // This will now receive "java" from the props
           value={value}
           onChange={(v) => onChange(v || "")}
           options={{
             minimap: { enabled: false },
             fontSize: 14,
-            automaticLayout: true
+            automaticLayout: true,
           }}
         />
       </div>
@@ -113,9 +117,8 @@ export default function EmbeddedIDE({
               {result.testResults.map((t: any, i: number) => (
                 <div
                   key={i}
-                  className={`mb-2 p-2 rounded ${
-                    t.passed ? "bg-green-900/30" : "bg-red-900/30"
-                  }`}
+                  className={`mb-2 p-2 rounded ${t.passed ? "bg-green-900/30" : "bg-red-900/30"
+                    }`}
                 >
                   <div><strong>Input:</strong> {t.input}</div>
                   <div><strong>Expected:</strong> {t.expected}</div>

@@ -8,7 +8,7 @@ import { BiometricSetup } from '../components/BiometricSetup';
 import EmbeddedIDE from '../leetcode-ide/components/EmbeddedIDE';
 import './CandidateInterviewPage.css';
 
-// ============================================
+// ===========================================
 // TYPES
 // ============================================
 
@@ -1105,6 +1105,7 @@ export function CandidateInterviewPage() {
                   <EmbeddedIDE
                     questionId={currentQuestion?.id || ''}
                     language={currentQuestion?.language || 'javascript'}
+                    testCases={currentQuestion?.testCases || []}
                     value={answers[currentQuestion?.id || ''] ?? currentQuestion?.starterCode ?? ''}
                     onChange={handleAnswerChange}
                   />

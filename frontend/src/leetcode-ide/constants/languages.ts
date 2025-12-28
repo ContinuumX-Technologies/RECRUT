@@ -7,7 +7,7 @@ export type Language = {
   export const LANGUAGES: Language[] = [
     { id: "cpp", label: "C++", monaco: "cpp" },
     { id: "python", label: "Python", monaco: "python" },
-    { id: "java", label: "Java", monaco: "java" },
+    { id: "java", label: "Java 17", monaco: "java" },
     { id: "javascript", label: "JavaScript", monaco: "javascript" },
     { id: "go", label: "Go", monaco: "go" },
     { id: "rust", label: "Rust", monaco: "rust" }
