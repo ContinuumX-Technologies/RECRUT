@@ -11,36 +11,40 @@ export async function generateAIQuestion(input: {
     promptHint?: string;
 }) {
     const prompt = `
-  Create a professional LeetCode-style coding question.
+    Create a professional LeetCode-style coding question.
+    
+    Difficulty: ${input.difficulty}
+    Data Structure: ${input.dataStructure}
+    Algorithm: ${input.algorithm}
+    Additional Instructions: ${input.promptHint || "None"}
+    
+    CRITICAL REQUIREMENTS:
+    1. STARTER CODE: Provide a function named "solution" with appropriate parameters.
+    2. AUTOMATIC INPUTS: You MUST include a "Driver" section at the bottom of the starter code. 
+       - For JavaScript: Use 'fs.readFileSync(0)' to read from stdin, 'JSON.parse' the input, and spread it into the 'solution' function.
+       - For Python: Use 'sys.stdin.read()', 'json.loads' the input, and spread it into the 'solution' function.
+    3. TEST CASES: The "input" field in testCases must be a JSON-stringified ARRAY of arguments that match the solution function parameters. 
+    4. DESCRIPTION: Include clear constraints and at least two examples.
   
-  Difficulty: ${input.difficulty}
-  Data Structure: ${input.dataStructure}
-  Algorithm: ${input.algorithm}
-  Additional Instructions: ${input.promptHint || "None"}
-  
-  CRITICAL REQUIREMENTS:
-  1. STARTER CODE: Provide a function named "solution" with appropriate parameters.
-  2. AUTOMATIC INPUTS: You MUST include a "Driver" section at the bottom of the starter code. 
-     - For JavaScript: Use 'fs.readFileSync(0)' to read from stdin, 'JSON.parse' the input, and spread it into the 'solution' function.
-     - For Python: Use 'sys.stdin.read()', 'json.loads' the input, and spread it into the 'solution' function.
-  3. TEST CASES: The "input" field in testCases must be a JSON-stringified ARRAY of arguments that match the solution function parameters. 
-     Example: If the function is solution(n, edges), the input should be "[7, [[0,1],[1,2]] ]".
-  4. DESCRIPTION: Include clear constraints and at least two examples.
+    Return ONLY valid JSON. Do NOT include markdown or explanations.
+    
+    JSON FORMAT (MUST MATCH EXACTLY):
+    {
+      "id": "temp-ai-id",
+      "text": "The Title of the Question",
+      "type": "code",
+      "difficulty": "${input.difficulty}",
+      "language": "javascript", 
+      "description": "Full problem description including constraints and examples.",
+      "starterCode": {
+        "javascript": "function solution(...) {\\n  // ...\\n}\\n\\n// --- INTERNAL DRIVER --- ...",
+        "python": "import sys, json\\ndef solution(...):\\n    # ...\\n# --- INTERNAL DRIVER --- ..."
+      },
+      "testCases": [{ "input": "[...]", "output": "..." }],
+      "hiddenTestCases": [{ "input": "[...]", "output": "..." }]
+    }
+    `;
 
-  Return ONLY valid JSON. Do NOT include markdown or explanations.
-  
-  JSON FORMAT:
-  {
-    "title": "",
-    "description": "",
-    "starterCode": {
-      "javascript": "function solution(n, edges, hasApple) {\\n  // Your code here\\n}\\n\\n// --- INTERNAL DRIVER --- \\nconst fs = require('fs');\\nconst input = fs.readFileSync(0, 'utf8');\\ntry {\\n  const args = JSON.parse(input);\\n  console.log(JSON.stringify(solution(...args)));\\n} catch (e) {\\n  process.exit(0);\\n}",
-      "python": "import sys, json\\n\\ndef solution(n, edges, hasApple):\\n    # Your code here\\n    pass\\n\\n# --- INTERNAL DRIVER --- \\nif __name__ == '__main__':\\n    line = sys.stdin.read()\\n    if line:\\n        args = json.loads(line)\\n        print(json.dumps(solution(*args)))"
-    },
-    "testCases": [{ "input": "[7, [[0,1,1]], [false, true]]", "output": "2" }],
-    "hiddenTestCases": [{ "input": "[7, [[0,1,1]], [false, true]]", "output": "2" }]
-  }
-  `;
 
     const response = await openai.chat.completions.create({
         model: "gpt-4o-mini", // Corrected model name
@@ -48,8 +52,11 @@ export async function generateAIQuestion(input: {
         temperature: 0.1
     });
 
+
     const raw = response.choices[0]?.message?.content;
 
+    console.log("🤖 AI RAW RESPONSE:", raw);
+    
     if (!raw) {
         throw new Error("OpenAI returned empty response");
     }

@@ -20,6 +20,10 @@ type Question = {
   language?: string;
   options?: string[];
   testCases?: TestCase[];
+  starterCode?: {
+    javascript?: string;
+    python?: string;
+  };
   hiddenTestCases?: TestCase[];
   aiConfig?: {
     difficulty: 'easy' | 'medium' | 'hard';
@@ -314,6 +318,10 @@ export function AdminDashboardPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Template delete confirmation
+  const [templateDeleteConfirm, setTemplateDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [templateDeleting, setTemplateDeleting] = useState(false);
+
   // --- Effects ---
   useEffect(() => {
     if (token) {
@@ -353,6 +361,36 @@ export function AdminDashboardPage() {
       setLoading(prev => ({ ...prev, templates: false }));
     }
   }, [token]);
+
+  const handleDeleteTemplate = useCallback(async (templateId: string) => {
+    if (!token) return;
+
+    setTemplateDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/templates/${templateId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        setTemplates(prev => prev.filter(t => t.id !== templateId));
+        setToast({ message: 'Template deleted successfully', type: 'success' });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setToast({
+          message: err.message || err.error || 'Failed to delete template',
+          type: 'error'
+        });
+      }
+    } catch (err) {
+      console.error('Delete template error:', err);
+      setToast({ message: 'Network error deleting template', type: 'error' });
+    } finally {
+      setTemplateDeleting(false);
+      setTemplateDeleteConfirm(null);
+    }
+  }, [token]);
+
 
   const loadInterviews = useCallback(async () => {
     if (!token) return;
@@ -458,7 +496,8 @@ export function AdminDashboardPage() {
     e.preventDefault();
     if (!token) return;
 
-    const hasEmptyQuestion = questions.some(q => !q.text.trim());
+    // FIX: Added optional chaining and null check for .text
+    const hasEmptyQuestion = questions.some(q => !q.text || !q.text.trim());
     if (hasEmptyQuestion) {
       setToast({ message: 'All questions must have text', type: 'error' });
       return;
@@ -575,10 +614,13 @@ export function AdminDashboardPage() {
 
       const data = await res.json();
 
-      updateQuestion(idx, 'text', data.title);
+      // UPDATED: Match the backend keys and update all necessary fields
+      updateQuestion(idx, 'text', data.text || data.title); // Fallback for safety
+      updateQuestion(idx, 'type', data.type || 'code');
       updateQuestion(idx, 'description', data.description);
       updateQuestion(idx, 'testCases', data.testCases);
       updateQuestion(idx, 'hiddenTestCases', data.hiddenTestCases);
+      updateQuestion(idx, 'starterCode', data.starterCode); // Save the code!
 
       setToast({ message: "AI question generated!", type: "success" });
     } catch (err) {
@@ -1133,10 +1175,70 @@ export function AdminDashboardPage() {
                       <div key={t.id} className="admin-template-card">
                         <div className="admin-template-card__header">
                           <h3 className="admin-template-card__name">{t.name}</h3>
-                          <button className="admin-template-card__action">
-                            <Icons.ChevronRight />
-                          </button>
+
+                          <div className="admin-template-card__actions">
+                            <button
+                              type="button"
+                              className="admin-template-card__delete"
+                              onClick={() => setTemplateDeleteConfirm({ id: t.id, name: t.name })}
+                              aria-label="Delete template"
+                            >
+                              <Icons.Trash />
+                            </button>
+                          </div>
                         </div>
+                        {templateDeleteConfirm && (
+                          <div className="admin-modal-backdrop">
+                            <div className="admin-modal">
+                              <div className="admin-modal__icon admin-modal__icon--danger">
+                                <Icons.Trash />
+                              </div>
+
+                              <h2 className="admin-modal__title">Delete Template?</h2>
+
+                              <p className="admin-modal__description">
+                                Are you sure you want to delete the template
+                                <strong> {templateDeleteConfirm.name} </strong>?
+                              </p>
+
+                              <div className="admin-modal__warning">
+                                <Icons.AlertCircle />
+                                <span>
+                                  This action cannot be undone. Templates used in interviews cannot be deleted.
+                                </span>
+                              </div>
+
+                              <div className="admin-modal__actions">
+                                <button
+                                  onClick={() => setTemplateDeleteConfirm(null)}
+                                  disabled={templateDeleting}
+                                  className="admin-btn admin-btn--secondary"
+                                >
+                                  Cancel
+                                </button>
+
+                                <button
+                                  onClick={() => handleDeleteTemplate(templateDeleteConfirm.id)}
+                                  disabled={templateDeleting}
+                                  className="admin-btn admin-btn--danger"
+                                >
+                                  {templateDeleting ? (
+                                    <>
+                                      <LoadingSpinner size="sm" />
+                                      <span>Deleting...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Icons.Trash />
+                                      <span>Delete Template</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
 
                         <div className="admin-template-card__badges">
                           <span className="admin-tag admin-tag--blue">

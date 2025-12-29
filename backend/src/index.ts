@@ -423,6 +423,50 @@ app.post('/api/admin/templates', authMiddleware, requireRole('INTERVIEWER'), asy
 }
 );
 
+// Delete an interview template (INTERVIEWER only)
+app.delete('/api/admin/templates/:id',authMiddleware,requireRole('INTERVIEWER'),async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+
+    try {
+      // 1️⃣ Check if template exists
+      const template = await prisma.interviewTemplate.findUnique({
+        where: { id },
+      });
+
+      if (!template) {
+        return res.status(404).json({ error: 'template_not_found' });
+      }
+
+      // 2️⃣ Check if template is used by any interviews
+      const usageCount = await prisma.interview.count({
+        where: { templateId: id },
+      });
+
+      if (usageCount > 0) {
+        return res.status(409).json({
+          error: 'template_in_use',
+          message: 'Cannot delete template. It is used by existing interviews.',
+          interviewsUsingTemplate: usageCount,
+        });
+      }
+
+      // 3️⃣ Safe to delete
+      await prisma.interviewTemplate.delete({
+        where: { id },
+      });
+
+      res.json({
+        ok: true,
+        message: 'Template deleted successfully',
+      });
+    } catch (e) {
+      console.error('Delete template error', e);
+      res.status(500).json({ error: 'internal_error' });
+    }
+  }
+);
+
+
 // Search candidates (by name, email, or candidateId)
 app.get('/api/admin/candidates', authMiddleware, requireRole('INTERVIEWER'), async (req: AuthRequest, res: Response) => {
   const q = String(req.query.query || '').trim();
