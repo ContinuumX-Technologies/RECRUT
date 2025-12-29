@@ -278,16 +278,16 @@ export function CandidateInterviewPage() {
   // Add this state near other state declarations
   const [configLoaded, setConfigLoaded] = useState(false);
 
-  // Replace the fetchConfig function
-  const fetchConfig = useCallback(async (silent = false) => {
-    // Prevent re-fetching after initial load
-    if (configLoaded && silent) {
+  // [FIX 1] Updated fetchConfig to accept a "force" parameter
+  const fetchConfig = useCallback(async (force = false) => {
+    // Prevent re-fetching after initial load unless forced
+    if (configLoaded && !force) {
       console.log('Config already loaded, skipping refetch');
       return;
     }
 
     if (!interviewId) {
-      if (!silent) {
+      if (!force) {
         setError("Invalid interview ID");
         setLoading(false);
       }
@@ -295,7 +295,7 @@ export function CandidateInterviewPage() {
     }
 
     try {
-      if (!silent) setLoading(true);
+      if (!force) setLoading(true);
 
       const res = await fetch(`${API_BASE}/api/interviews/${interviewId}/config`);
 
@@ -305,21 +305,19 @@ export function CandidateInterviewPage() {
 
       const data = await res.json();
 
-      // Only set config on first load, or if forced
-      if (!configLoaded) {
-        setConfig({
-          ...data,
-          questions: Array.isArray(data.questions) ? data.questions : [],
-        });
-        setConfigLoaded(true);
-      }
+      // [FIX 2] Update config regardless of initial load state if forced
+      setConfig({
+        ...data,
+        questions: Array.isArray(data.questions) ? data.questions : [],
+      });
+      setConfigLoaded(true);
 
-      if (!silent) setError(null);
+      if (!force) setError(null);
     } catch (e) {
       console.error('Config fetch error:', e);
-      if (!silent) setError("Unable to load interview. Please try again.");
+      if (!force) setError("Unable to load interview. Please try again.");
     } finally {
-      if (!silent) setLoading(false);
+      if (!force) setLoading(false);
     }
   }, [interviewId, configLoaded]);
   // ==========================================
@@ -938,21 +936,23 @@ export function CandidateInterviewPage() {
                           </div>
                         </div>
 
-                        {/* Audio Visualizer */}
+                        {/* [FIX 3] Updated AudioVisualizerCard with Upload/Refresh Logic */}
                         <AudioVisualizerCard
                           variant="default"
                           showControls={true}
                           accentColor="#0071e3"
-                          onRecordingStart={() => {
-                            console.log('Recording started');
-                          }}
+                          interviewId={interviewId}
+                          questionId={currentQuestion?.id}
+                          onRecordingStart={() => console.log('Recording started')}
                           onRecordingStop={(duration) => {
-                            console.log('Recording stopped, duration:', duration);
+                            console.log('Recording stopped locally, duration:', duration);
                             setAnsweredQuestions(prev => new Set(prev).add(currentIndex));
                             handleAnswerChange(`audio_response_${duration}s`);
                           }}
-                          onAudioLevel={(level) => {
-                            // Optional: use audio level for other UI feedback
+                          onUploadComplete={() => {
+                            console.log("Upload complete, refreshing config for potential follow-up questions...");
+                            // Force refresh the question list to see new follow-ups
+                            fetchConfig(true);
                           }}
                         />
 
