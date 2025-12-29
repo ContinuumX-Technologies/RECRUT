@@ -7,7 +7,7 @@ import { useProctor } from '../hooks/useProctor';
 import { BiometricSetup } from '../components/BiometricSetup';
 import EmbeddedIDE from '../leetcode-ide/components/EmbeddedIDE';
 import './CandidateInterviewPage.css';
-
+import { MorphingParticleText } from '../components/MorphingParticleText';
 // ===========================================
 // TYPES
 // ============================================
@@ -864,9 +864,14 @@ export function CandidateInterviewPage() {
                     )}
                   </div>
 
-                  <h1 className="apple-question-title">
-                    {currentQuestion?.text}
-                  </h1>
+                  <div className="apple-question-title-wrapper">
+                    <MorphingParticleText
+                      text={currentQuestion?.text || "Prepare Yourself"}
+                      className="morph-container"
+                    />
+                    {/* Screen reader only text for accessibility */}
+                    <h1 className="sr-only">{currentQuestion?.text}</h1>
+                  </div>
 
                   {currentQuestion?.durationSec && (
                     <div className="apple-duration">

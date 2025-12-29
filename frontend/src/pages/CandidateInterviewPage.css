@@ -2486,3 +2486,34 @@
   gap: var(--space-3);
   margin-top: var(--space-4);
 }
+
+.apple-question-title-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+  /* REMOVED the radial-gradient background */
+  background: transparent; 
+}
+
+.morph-container {
+  width: 100% !important;
+  height: 300px !important;
+}
+
+/* Accessibility helper */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
