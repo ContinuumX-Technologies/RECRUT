@@ -8,6 +8,7 @@ import { BiometricSetup } from '../components/BiometricSetup';
 import EmbeddedIDE from '../leetcode-ide/components/EmbeddedIDE';
 import './CandidateInterviewPage.css';
 import { MorphingParticleText } from '../components/MorphingParticleText';
+
 // ===========================================
 // TYPES
 // ============================================
@@ -52,10 +53,11 @@ type ConsoleTab = 'testcase' | 'result';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 
 // ============================================
-// ICON COMPONENTS - SF Symbols inspired
+// ICON COMPONENTS
 // ============================================
 
 const Icons = {
+  // ... (keeping existing icons same for brevity)
   Logo: () => (
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" />
@@ -181,10 +183,7 @@ const Icons = {
   ),
 };
 
-// ============================================
-// LOADING SCREEN - Apple Style
-// ============================================
-
+// ... (LoadingScreen and ErrorScreen components remain the same)
 const LoadingScreen = () => (
   <div className="apple-loading">
     <div className="apple-loading__content">
@@ -198,10 +197,6 @@ const LoadingScreen = () => (
     </div>
   </div>
 );
-
-// ============================================
-// ERROR SCREEN - Apple Style
-// ============================================
 
 const ErrorScreen = ({
   message,
@@ -259,6 +254,9 @@ export function CandidateInterviewPage() {
     runtime?: string;
     memory?: string;
   } | null>(null);
+  
+  // [NEW] Processing state for async question generation
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // ==========================================
   // REFS
@@ -268,6 +266,10 @@ export function CandidateInterviewPage() {
   const mobileVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const prevQuestionsRef = useRef<Question[]>([]);
+  
+  // Refs to track follow-up flow
+  const prevIndexRef = useRef<number>(currentIndex);
+  const prevIdRef = useRef<string | undefined>(undefined);
 
   // ==========================================
   // HOOKS
@@ -276,7 +278,6 @@ export function CandidateInterviewPage() {
   const alert = useProctorAlerts(interviewId);
   useProctor(interviewId, setupComplete && config ? config.proctorConfig : null);
 
-  // Add this state near other state declarations
   const [configLoaded, setConfigLoaded] = useState(false);
 
   // Text-to-Speech Helper
@@ -287,11 +288,9 @@ export function CandidateInterviewPage() {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    // Optional: Adjust rate/pitch for a more natural feel
     utterance.rate = 1.0; 
     utterance.pitch = 1.0;
     
-    // Select a preferred voice if available (e.g., Google US English)
     const voices = window.speechSynthesis.getVoices();
     const preferredVoice = voices.find(voice => 
       voice.name.includes('Google US English') || voice.name.includes('Samantha')
@@ -301,9 +300,7 @@ export function CandidateInterviewPage() {
     window.speechSynthesis.speak(utterance);
   }, []);
 
-  // [FIX 1] Updated fetchConfig to accept a "force" parameter
   const fetchConfig = useCallback(async (force = false) => {
-    // Prevent re-fetching after initial load unless forced
     if (configLoaded && !force) {
       console.log('Config already loaded, skipping refetch');
       return;
@@ -329,7 +326,6 @@ export function CandidateInterviewPage() {
       const data = await res.json();
       const newQuestions = Array.isArray(data.questions) ? data.questions : [];
 
-      // [FIX 2] Update config regardless of initial load state if forced
       setConfig(prevConfig => {
         if (prevConfig) {
           prevQuestionsRef.current = prevConfig.questions;
@@ -349,49 +345,104 @@ export function CandidateInterviewPage() {
       if (!force) setLoading(false);
     }
   }, [interviewId, configLoaded]);
+
   // ==========================================
   // EFFECTS
   // ==========================================
 
-  // Time update
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Detect follow-up questions and auto-advance + read aloud
+  // [NEW] Polling Mechanism: Wait for Follow-up Generation
+  useEffect(() => {
+    let pollTimer: number;
+
+    if (isProcessing) {
+      console.log("Waiting for follow-up generation (polling)...");
+      pollTimer = window.setInterval(async () => {
+         await fetchConfig(true);
+      }, 2000); // Poll every 2s
+    }
+
+    return () => {
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [isProcessing, fetchConfig]);
+
+
+  // [UPDATED] Detect follow-up questions (Insertions AND Replacements)
   useEffect(() => {
     if (!config || prevQuestionsRef.current.length === 0) return;
 
     const currentQuestions = config.questions;
     const prevQuestions = prevQuestionsRef.current;
 
+    // 1. Detection: Question List Grew (New Question Inserted)
     if (currentQuestions.length > prevQuestions.length) {
       console.log("New questions detected. Checking for follow-up insertion...");
-      
       const potentialNextIndex = currentIndex + 1;
       
       if (potentialNextIndex < currentQuestions.length) {
         const nextQuestion = currentQuestions[potentialNextIndex];
         const prevQuestionAtNextIndex = prevQuestions[potentialNextIndex];
 
-        // If the question at the next index is different (ID check) or wasn't there
         if (!prevQuestionAtNextIndex || nextQuestion.id !== prevQuestionAtNextIndex.id) {
-           console.log("Follow-up question detected. Auto-advancing...");
-           
+           console.log("Follow-up question detected (Insertion). Auto-advancing...");
+           setIsProcessing(false); // Stop polling
            setCurrentIndex(potentialNextIndex);
-           
-           // Small delay to allow UI to settle before speaking
-           setTimeout(() => {
-             speakQuestion(nextQuestion.text);
-           }, 500);
-           
-           // Sync ref to prevent double trigger
+           setTimeout(() => speakQuestion(nextQuestion.text), 500);
            prevQuestionsRef.current = currentQuestions; 
         }
       }
+    } 
+    // 2. Detection: Question List Same Length (In-Place Update/Replacement)
+    else if (currentQuestions.length === prevQuestions.length) {
+        const currentQ = currentQuestions[currentIndex];
+        const prevQ = prevQuestions[currentIndex];
+
+        if (currentQ && prevQ && currentQ.id !== prevQ.id) {
+            console.log("Follow-up question detected (Replacement). Updating UI...");
+            setIsProcessing(false); // Stop polling
+            // No index change needed, just ensure speech triggers
+            setTimeout(() => speakQuestion(currentQ.text), 500);
+            prevQuestionsRef.current = currentQuestions;
+        }
     }
   }, [config, currentIndex, speakQuestion]);
+
+  // Logic to reset "Answered" state if we are on the same index but the question ID changes
+  const currentQuestionId = config?.questions[currentIndex]?.id;
+
+  useEffect(() => {
+    if (!currentQuestionId) return;
+
+    // Check if we stayed on the same index but the Question ID changed
+    if (currentIndex === prevIndexRef.current && currentQuestionId !== prevIdRef.current) {
+        console.log("Question ID changed at same index - Resetting answered status for follow-up");
+        
+        setAnsweredQuestions(prev => {
+            const next = new Set(prev);
+            if (next.has(currentIndex)) {
+                next.delete(currentIndex);
+                return next;
+            }
+            return prev;
+        });
+        
+        // Clear old answer from state so text area/recorder is fresh
+        setAnswers(prev => {
+            const next = { ...prev };
+            delete next[currentQuestionId]; // Clear NEW id's answer if any
+            return next;
+        });
+    }
+
+    prevIndexRef.current = currentIndex;
+    prevIdRef.current = currentQuestionId;
+  }, [currentIndex, currentQuestionId]);
+
 
   // Camera initialization
   useEffect(() => {
@@ -603,7 +654,7 @@ export function CandidateInterviewPage() {
         timeMs?: number;
         memoryMb?: number;
       }>(`${API_BASE}/api/judge/submit`, {
-        interviewId, // FIX: Now passing required interviewId
+        interviewId, 
         questionId: currentQuestion.id,
         language: currentQuestion.language || "javascript",
         code: answers[currentQuestion.id]
@@ -666,8 +717,6 @@ export function CandidateInterviewPage() {
     setCodeOutput(null);
 
     try {
-      // AUTOMATIC INPUT INJECTION:
-      // We wrap the user's code with a driver that injects the test case data
       const res = await apiFetch<{
         testResults: any[];
       }>(`${API_BASE}/api/judge/run`, {
@@ -722,7 +771,7 @@ export function CandidateInterviewPage() {
 
         return (
           <button
-            key={`question-${q.id}`} // Use stable ID, not index
+            key={`question-${q.id}`} 
             className={`question-list__item ${isCurrent ? 'question-list__item--active' : ''
               } ${isAnswered ? 'question-list__item--answered' : ''
               }`}
@@ -744,25 +793,19 @@ export function CandidateInterviewPage() {
     </div>
   );
 
-  // Optimized effect to preload starter code when question changes
   useEffect(() => {
-    // Only proceed if we have a coding question and no answer has been stored for it yet
     if (currentQuestion?.type === 'code' && answers[currentQuestion.id] === undefined) {
       const lang = currentQuestion.language || 'javascript';
-
-      // Safely extract starter code
       let starter = '';
       if (currentQuestion.starterCode && typeof currentQuestion.starterCode === 'object') {
         starter = currentQuestion.starterCode[lang] || '';
       }
-
-      // Initialize the answer state for this question with the starter code
       setAnswers(prev => ({
         ...prev,
         [currentQuestion.id]: starter
       }));
     }
-  }, [currentQuestion?.id, currentQuestion?.type]); // Only re-run when the question itself changes
+  }, [currentQuestion?.id, currentQuestion?.type]);
 
   // ==========================================
   // RENDER CONDITIONS
@@ -927,10 +970,9 @@ export function CandidateInterviewPage() {
 
                   <div className="apple-question-title-wrapper">
                     <MorphingParticleText
-                      text={currentQuestion?.text || "Prepare Yourself"}
+                      text={isProcessing ? "Analyzing Answer..." : (currentQuestion?.text || "Prepare Yourself")}
                       className="morph-container"
                     />
-                    {/* Screen reader only text for accessibility */}
                     <h1 className="sr-only">{currentQuestion?.text}</h1>
                   </div>
 
@@ -999,14 +1041,14 @@ export function CandidateInterviewPage() {
                           </div>
                         </div>
 
-                        {/* [FIX 3] Updated AudioVisualizerCard with Upload/Refresh Logic AND Explicit Silence Props */}
+                        {/* Audio Component */}
                         <AudioVisualizerCard
+                          key={currentQuestion?.id || `idx-${currentIndex}`}
                           variant="default"
-                          showControls={true}
+                          showControls={!isProcessing} // Disable controls while processing
                           accentColor="#0071e3"
                           interviewId={interviewId}
                           questionId={currentQuestion?.id}
-                          // Explicitly set silence detection params for "conversational" feel (2.5s)
                           silenceDetection={true}
                           silenceDurationMs={2500}
                           silenceThreshold={0.05}
@@ -1017,14 +1059,19 @@ export function CandidateInterviewPage() {
                             handleAnswerChange(`audio_response_${duration}s`);
                           }}
                           onUploadComplete={() => {
-                            console.log("Upload complete, refreshing config for potential follow-up questions...");
-                            // Force refresh the question list to see new follow-ups
-                            fetchConfig(true);
+                            console.log("Upload complete, initiating poll for follow-up...");
+                            setIsProcessing(true); // Start polling
                           }}
                         />
 
-                        {/* Optional: Show completion state after recording */}
-                        {answeredQuestions.has(currentIndex) && (
+                        {/* Processing / Completion State */}
+                        {isProcessing ? (
+                           <div className="apple-audio-complete apple-audio-complete--processing">
+                              <div className="apple-spinner" />
+                              <h4 className="apple-audio-complete__title">Processing Response...</h4>
+                              <p className="apple-audio-complete__duration">Please wait while we analyze your answer</p>
+                           </div>
+                        ) : answeredQuestions.has(currentIndex) && (
                           <div className="apple-audio-complete">
                             <div className="apple-audio-complete__icon">
                               <Icons.Check />
@@ -1042,7 +1089,6 @@ export function CandidateInterviewPage() {
                                     next.delete(currentIndex);
                                     return next;
                                   });
-                                  // Clear the answer too
                                   if (currentQuestion) {
                                     setAnswers(prev => {
                                       const next = { ...prev };
@@ -1107,24 +1153,20 @@ export function CandidateInterviewPage() {
                 <nav className="apple-nav-controls">
                   <button
                     onClick={handlePrev}
-                    disabled={currentIndex === 0}
+                    disabled={currentIndex === 0 || isProcessing}
                     className="apple-btn apple-btn--secondary"
                   >
                     <Icons.ChevronLeft />
                     <span>Previous</span>
                   </button>
 
-                  {/* Replace the dots section in apple-nav-controls */}
                   <div className="apple-dots">
                     {(() => {
-                      // Calculate visible range (show 5 dots max, centered on current)
                       const maxVisible = 5;
                       const halfVisible = Math.floor(maxVisible / 2);
-
                       let startIndex = Math.max(0, currentIndex - halfVisible);
                       let endIndex = Math.min(totalQuestions, startIndex + maxVisible);
 
-                      // Adjust start if we're near the end
                       if (endIndex - startIndex < maxVisible) {
                         startIndex = Math.max(0, endIndex - maxVisible);
                       }
@@ -1140,9 +1182,10 @@ export function CandidateInterviewPage() {
                           className={`apple-dot ${questionIndex === currentIndex ? 'apple-dot--active' : ''
                             } ${answeredQuestions.has(questionIndex) ? 'apple-dot--answered' : ''
                             }`}
-                          onClick={() => handleQuestionSelect(questionIndex)}
+                          onClick={() => !isProcessing && handleQuestionSelect(questionIndex)}
                           aria-label={`Go to question ${questionIndex + 1}`}
                           aria-current={questionIndex === currentIndex ? 'step' : undefined}
+                          disabled={isProcessing}
                         />
                       ));
                     })()}
@@ -1150,6 +1193,7 @@ export function CandidateInterviewPage() {
 
                   <button
                     onClick={isLastQuestion ? handleFinish : handleNext}
+                    disabled={isProcessing}
                     className={`apple-btn ${isLastQuestion ? 'apple-btn--accent' : 'apple-btn--primary'}`}
                   >
                     <span>{isLastQuestion ? 'Submit' : 'Next'}</span>
@@ -1201,7 +1245,6 @@ export function CandidateInterviewPage() {
                     questionId={currentQuestion?.id || ''}
                     language={currentQuestion?.language || 'javascript'}
                     testCases={currentQuestion?.testCases || []}
-                    // Ensure we fall back to an empty string if nothing is found
                     value={answers[currentQuestion?.id] ?? ''}
                     onChange={handleAnswerChange}
                   />
@@ -1269,7 +1312,6 @@ export function CandidateInterviewPage() {
             ) : (
               /* Camera & Tips Panel */
               <aside className="apple-panel apple-panel--sidebar">
-
                 {/* Guidelines */}
                 <div className="apple-card">
                   <header className="apple-card__header">
