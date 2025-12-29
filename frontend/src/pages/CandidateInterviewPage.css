@@ -1,1976 +1,1907 @@
 /* ============================================
    APPLE-INSPIRED INTERVIEW PLATFORM
    Design System & Component Styles
+   COMPACT NO-SCROLL LAYOUT
    ============================================ */
 
 /* ============================================
    CSS CUSTOM PROPERTIES (Design Tokens)
    ============================================ */
 
-   :root {
-    /* Colors - Light Mode */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f5f5f7;
-    --bg-tertiary: #e8e8ed;
-    --bg-elevated: #ffffff;
-    --bg-overlay: rgba(0, 0, 0, 0.4);
-    
-    --text-primary: #1d1d1f;
-    --text-secondary: #86868b;
-    --text-tertiary: #aeaeb2;
-    --text-inverse: #ffffff;
-    
-    --border-primary: #d2d2d7;
-    --border-secondary: #e5e5ea;
-    
-    --accent-primary: #0071e3;
-    --accent-hover: #0077ed;
-    --accent-pressed: #006edb;
-    
-    --success: #34c759;
-    --success-bg: rgba(52, 199, 89, 0.12);
-    --warning: #ff9500;
-    --warning-bg: rgba(255, 149, 0, 0.12);
-    --error: #ff3b30;
-    --error-bg: rgba(255, 59, 48, 0.12);
-    
-    /* Typography */
-    --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-    --font-mono: 'SF Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
-    
-    --text-xs: 0.6875rem;
-    --text-sm: 0.8125rem;
-    --text-base: 0.9375rem;
-    --text-lg: 1.0625rem;
-    --text-xl: 1.25rem;
-    --text-2xl: 1.5rem;
-    --text-3xl: 1.75rem;
-    --text-4xl: 2.125rem;
-    
-    --font-regular: 400;
-    --font-medium: 500;
-    --font-semibold: 600;
-    --font-bold: 700;
-    
-    --leading-tight: 1.2;
-    --leading-normal: 1.47;
-    --leading-relaxed: 1.6;
-    
-    --tracking-tight: -0.022em;
-    --tracking-normal: -0.016em;
-    
-    /* Spacing */
-    --space-1: 0.25rem;
-    --space-2: 0.5rem;
-    --space-3: 0.75rem;
-    --space-4: 1rem;
-    --space-5: 1.25rem;
-    --space-6: 1.5rem;
-    --space-8: 2rem;
-    --space-10: 2.5rem;
-    --space-12: 3rem;
-    --space-16: 4rem;
-    
-    /* Border Radius */
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 14px;
-    --radius-xl: 20px;
-    --radius-2xl: 28px;
-    --radius-full: 9999px;
-    
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.12);
-    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.16);
-    
-    /* Transitions */
-    --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    --ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
-    --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    
-    --duration-fast: 150ms;
-    --duration-normal: 250ms;
-    --duration-slow: 400ms;
-    
-    /* Layout */
-    --nav-height: 52px;
-    --sidebar-width: 320px;
-    --panel-min-width: 400px;
-    --container-max: 1440px;
+:root {
+  /* Colors - Light Mode */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f7;
+  --bg-tertiary: #e8e8ed;
+  --bg-elevated: #ffffff;
+  --bg-overlay: rgba(0, 0, 0, 0.4);
+
+  --text-primary: #1d1d1f;
+  --text-secondary: #86868b;
+  --text-tertiary: #aeaeb2;
+  --text-inverse: #ffffff;
+
+  --border-primary: #d2d2d7;
+  --border-secondary: #e5e5ea;
+
+  --accent-primary: #0071e3;
+  --accent-hover: #0077ed;
+  --accent-pressed: #006edb;
+
+  --success: #34c759;
+  --success-bg: rgba(52, 199, 89, 0.12);
+  --warning: #ff9500;
+  --warning-bg: rgba(255, 149, 0, 0.12);
+  --error: #ff3b30;
+  --error-bg: rgba(255, 59, 48, 0.12);
+
+  /* Typography - Compact */
+  --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+
+  --text-xs: 0.625rem;
+  --text-sm: 0.75rem;
+  --text-base: 0.8125rem;
+  --text-lg: 0.9375rem;
+  --text-xl: 1.0625rem;
+  --text-2xl: 1.25rem;
+  --text-3xl: 1.5rem;
+  --text-4xl: 1.75rem;
+
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.4;
+  --leading-relaxed: 1.5;
+
+  --tracking-tight: -0.022em;
+  --tracking-normal: -0.016em;
+
+  /* Spacing - Compact */
+  --space-1: 0.125rem;
+  --space-2: 0.25rem;
+  --space-3: 0.5rem;
+  --space-4: 0.75rem;
+  --space-5: 1rem;
+  --space-6: 1.25rem;
+  --space-8: 1.5rem;
+  --space-10: 2rem;
+  --space-12: 2.5rem;
+  --space-16: 3rem;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.16);
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
+  /* Layout - Compact */
+  --nav-height: 44px;
+  --sidebar-width: 260px;
+  --panel-min-width: 320px;
+  --container-max: 100%;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #000000;
+    --bg-secondary: #1c1c1e;
+    --bg-tertiary: #2c2c2e;
+    --bg-elevated: #1c1c1e;
+    --bg-overlay: rgba(0, 0, 0, 0.6);
+
+    --text-primary: #f5f5f7;
+    --text-secondary: #a1a1a6;
+    --text-tertiary: #6e6e73;
+
+    --border-primary: #38383a;
+    --border-secondary: #2c2c2e;
+
+    --accent-primary: #0a84ff;
+    --accent-hover: #409cff;
+    --accent-pressed: #0077ed;
+
+    --success: #30d158;
+    --warning: #ff9f0a;
+    --error: #ff453a;
   }
-  
-  /* Dark Mode */
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg-primary: #000000;
-      --bg-secondary: #1c1c1e;
-      --bg-tertiary: #2c2c2e;
-      --bg-elevated: #1c1c1e;
-      --bg-overlay: rgba(0, 0, 0, 0.6);
-      
-      --text-primary: #f5f5f7;
-      --text-secondary: #a1a1a6;
-      --text-tertiary: #6e6e73;
-      
-      --border-primary: #38383a;
-      --border-secondary: #2c2c2e;
-      
-      --accent-primary: #0a84ff;
-      --accent-hover: #409cff;
-      --accent-pressed: #0077ed;
-      
-      --success: #30d158;
-      --warning: #ff9f0a;
-      --error: #ff453a;
-    }
-  }
-  
-  /* ============================================
+}
+
+/* ============================================
      RESET & BASE STYLES
      ============================================ */
-  
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+/* ============================================
+     LOADING SCREEN
+     ============================================ */
+
+.apple-loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  z-index: 9999;
+}
+
+.apple-loading__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+  padding: var(--space-6);
+}
+
+.apple-loading__logo {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+.apple-loading__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.apple-loading__ring-segment {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--border-secondary);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s var(--ease-in-out) infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.apple-loading__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+}
+
+.apple-loading__subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* ============================================
+     ERROR SCREEN
+     ============================================ */
+
+.apple-error {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  padding: var(--space-4);
+}
+
+.apple-error__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 320px;
+  padding: var(--space-6);
+  text-align: center;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+}
+
+.apple-error__icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--error-bg);
+  border-radius: 50%;
+  color: var(--error);
+}
+
+.apple-error__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.apple-error__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.apple-error__message {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* ============================================
+     MAIN INTERVIEW CONTAINER - NO SCROLL
+     ============================================ */
+
+.apple-interview {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  z-index: 1;
+}
+
+/* ============================================
+     NAVIGATION BAR - COMPACT
+     ============================================ */
+
+.apple-nav {
+  position: relative;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--border-secondary);
+  flex-shrink: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .apple-nav {
+    background: rgba(29, 29, 31, 0.72);
+  }
+}
+
+.apple-nav__container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--nav-height);
+  padding: 0 var(--space-3);
+  max-width: var(--container-max);
+  margin: 0 auto;
+}
+
+.apple-nav__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.apple-nav__menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.apple-nav__menu-btn:hover {
+  background: var(--bg-tertiary);
+}
+
+.apple-nav__menu-icon {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 16px;
+}
+
+.apple-nav__menu-icon span {
+  display: block;
+  height: 1.5px;
+  background: var(--text-primary);
+  border-radius: 1px;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.apple-nav__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.apple-nav__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, var(--accent-primary), #5856d6);
+  border-radius: var(--radius-sm);
+  color: white;
+}
+
+.apple-nav__logo svg {
+  width: 14px;
+  height: 14px;
+}
+
+.apple-nav__title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-tight);
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .apple-nav__title {
+    display: block;
+  }
+}
+
+.apple-nav__center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-3);
+}
+
+.apple-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 160px;
+  width: 100%;
+}
+
+.apple-progress__bar {
+  flex: 1;
+  height: 3px;
+  background: var(--border-primary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.apple-progress__fill {
+  height: 100%;
+  background: var(--accent-primary);
+  border-radius: var(--radius-full);
+  transition: width var(--duration-normal) var(--ease-out);
+}
+
+.apple-progress__text {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.apple-nav__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.apple-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+}
+
+.apple-status__icon {
+  display: flex;
+  width: 12px;
+  height: 12px;
+  color: var(--success);
+}
+
+.apple-status__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.apple-status--offline .apple-status__icon {
+  color: var(--error);
+}
+
+.apple-status--recording {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.apple-status__dot {
+  width: 5px;
+  height: 5px;
+  background: var(--error);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.apple-status__text {
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .apple-status__text {
+    display: block;
+  }
+}
+
+.apple-nav__camera {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  border: 1.5px solid var(--border-primary);
+}
+
+.apple-nav__camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+/* ============================================
+     SIDEBAR (Mobile)
+     ============================================ */
+
+.apple-sidebar {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.apple-sidebar--open {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.apple-sidebar__backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-overlay);
+}
+
+.apple-sidebar__content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(280px, 80vw);
+  background: var(--bg-elevated);
+  transform: translateX(-100%);
+  transition: transform var(--duration-normal) var(--ease-out);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-xl);
+}
+
+.apple-sidebar--open .apple-sidebar__content {
+  transform: translateX(0);
+}
+
+.apple-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  border-bottom: 0.5px solid var(--border-secondary);
+}
+
+.apple-sidebar__title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+}
+
+.apple-sidebar__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.apple-sidebar__close:hover {
+  background: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.apple-sidebar__close svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Question List */
+.question-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+
+.question-list__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.question-list__item:hover {
+  background: var(--bg-tertiary);
+}
+
+.question-list__item--active {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.question-list__item--active:hover {
+  background: var(--accent-hover);
+}
+
+.question-list__number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.question-list__item--active .question-list__number {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.question-list__icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.question-list__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.question-list__item--active .question-list__icon {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.question-list__text {
+  flex: 1;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.question-list__item--active .question-list__text {
+  color: white;
+}
+
+.question-list__check {
+  width: 16px;
+  height: 16px;
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+.question-list__check svg {
+  width: 100%;
+  height: 100%;
+}
+
+.question-list__item--active .question-list__check {
+  color: white;
+}
+
+/* ============================================
+     MAIN CONTENT AREA - FILLS REMAINING SPACE
+     ============================================ */
+
+.apple-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Alert Banner */
+.apple-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-md);
+  animation: slideDown var(--duration-normal) var(--ease-out);
+  flex-shrink: 0;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.apple-alert__icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: var(--warning);
+}
+
+.apple-alert__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.apple-alert__content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.apple-alert__content strong {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.apple-alert__content p {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.apple-alert__dismiss {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.apple-alert__dismiss:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+.apple-alert__dismiss svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Content Container - FILLS SPACE */
+.apple-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  padding-top: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .apple-content {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .apple-content--code {
+    height: 100%;
+  }
+}
+
+/* ============================================
+     PANELS - COMPACT
+     ============================================ */
+
+.apple-panel {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.apple-panel--question {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .apple-panel--question {
+    max-width: 100%;
+    min-width: var(--panel-min-width);
+  }
+}
+
+.apple-panel__scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .apple-panel__scroll {
+    padding: var(--space-5);
+  }
+}
+
+.apple-panel--sidebar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .apple-panel--sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow-y: auto;
+  }
+}
+
+.apple-panel--editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ============================================
+     QUESTION HEADER - COMPACT
+     ============================================ */
+
+.apple-question-header {
+  margin-bottom: var(--space-3);
+}
+
+.apple-question-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.apple-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+}
+
+.apple-badge svg {
+  width: 10px;
+  height: 10px;
+}
+
+.apple-badge--easy {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.apple-badge--medium {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.apple-badge--hard {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.apple-question-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+@media (min-width: 768px) {
+  .apple-question-title {
+    font-size: var(--text-xl);
+  }
+}
+
+.apple-duration {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.apple-duration svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ============================================
+     DESCRIPTION & EXAMPLES - COMPACT
+     ============================================ */
+
+.apple-description {
+  margin-bottom: var(--space-3);
+}
+
+.apple-description p {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.apple-description p:last-child {
+  margin-bottom: 0;
+}
+
+.apple-examples {
+  margin-bottom: var(--space-3);
+}
+
+.apple-examples h3 {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.apple-example {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+}
+
+.apple-example:last-child {
+  margin-bottom: 0;
+}
+
+.apple-example__label {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  border-bottom: 0.5px solid var(--border-secondary);
+}
+
+.apple-example__row {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.5px solid var(--border-secondary);
+}
+
+.apple-example__row:last-child {
+  border-bottom: none;
+}
+
+.apple-example__key {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  min-width: 50px;
+}
+
+.apple-example__value {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+/* ============================================
+     ANSWER SECTIONS - COMPACT
+     ============================================ */
+
+.apple-answer {
+  margin-bottom: var(--space-4);
+}
+
+/* Textarea */
+.apple-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: var(--space-3);
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  resize: vertical;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.apple-textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
+}
+
+.apple-textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* MCQ Options */
+.apple-mcq {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.apple-mcq__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.apple-mcq__option:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-primary);
+}
+
+.apple-mcq__option--selected {
+  background: rgba(0, 113, 227, 0.08);
+  border-color: var(--accent-primary);
+}
+
+.apple-mcq__option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.apple-mcq__radio {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-primary);
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.apple-mcq__option--selected .apple-mcq__radio {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+}
+
+.apple-mcq__radio::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  background: white;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform var(--duration-fast) var(--spring);
+}
+
+.apple-mcq__option--selected .apple-mcq__radio::after {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.apple-mcq__text {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: var(--leading-normal);
+}
+
+/* ============================================
+     NAVIGATION CONTROLS - COMPACT
+     ============================================ */
+
+.apple-nav-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 0.5px solid var(--border-secondary);
+  flex-shrink: 0;
+}
+
+.apple-dots {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.apple-dot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  background: var(--border-primary);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.apple-dot:hover {
+  background: var(--text-tertiary);
+  transform: scale(1.2);
+}
+
+.apple-dot--active {
+  background: var(--accent-primary);
+  transform: scale(1.2);
+}
+
+.apple-dot--answered {
+  background: var(--success);
+}
+
+.apple-dot--active.apple-dot--answered {
+  background: var(--accent-primary);
+}
+
+/* ============================================
+     BUTTONS - COMPACT
+     ============================================ */
+
+.apple-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-family);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  line-height: 1;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.apple-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.apple-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.apple-btn--primary {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.apple-btn--primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: scale(1.02);
+}
+
+.apple-btn--primary:active:not(:disabled) {
+  background: var(--accent-pressed);
+  transform: scale(0.98);
+}
+
+.apple-btn--secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.apple-btn--secondary:hover:not(:disabled) {
+  background: var(--border-primary);
+}
+
+.apple-btn--ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.apple-btn--ghost:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.apple-btn--accent {
+  background: linear-gradient(135deg, #34c759, #30d158);
+  color: white;
+}
+
+.apple-btn--accent:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(52, 199, 89, 0.3);
+}
+
+/* ============================================
+     CODE EDITOR PANEL - COMPACT
+     ============================================ */
+
+.apple-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-secondary);
+  border-bottom: 0.5px solid var(--border-secondary);
+  flex-shrink: 0;
+}
+
+.apple-editor-lang {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.apple-editor-lang:hover {
+  background: var(--bg-tertiary);
+}
+
+.apple-editor-lang svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-tertiary);
+}
+
+.apple-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.apple-editor-actions .apple-btn span {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .apple-editor-actions .apple-btn span {
+    display: inline;
+  }
+}
+
+.apple-editor-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ============================================
+     CONSOLE PANEL - COMPACT
+     ============================================ */
+
+.apple-console {
+  border-top: 0.5px solid var(--border-secondary);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+  max-height: 140px;
+  display: flex;
+  flex-direction: column;
+}
+
+.apple-console-header {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 0.5px solid var(--border-secondary);
+  flex-shrink: 0;
+}
+
+.apple-console-tab {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.apple-console-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.apple-console-tab--active {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+
+.apple-console-body {
+  padding: var(--space-2) var(--space-3);
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.apple-console-testcase,
+.apple-console-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.apple-console-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.apple-console-row label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.apple-console-row code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+}
+
+.apple-console-result__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+}
+
+.apple-console-result__header svg {
+  width: 16px;
+  height: 16px;
+}
+
+.apple-console-result--success .apple-console-result__header {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.apple-console-result--error .apple-console-result__header {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.apple-console-result__stats {
+  display: flex;
+  gap: var(--space-3);
+  margin-left: auto;
+  font-size: var(--text-xs);
+  font-weight: var(--font-regular);
+  color: var(--text-secondary);
+}
+
+.apple-console-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+}
+
+.apple-console-empty svg {
+  width: 24px;
+  height: 24px;
+  opacity: 0.5;
+}
+
+/* ============================================
+     SIDEBAR CARDS - COMPACT
+     ============================================ */
+
+.apple-card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  box-shadow: var(--shadow-sm);
+}
+
+.apple-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.apple-card__header svg {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-primary);
+}
+
+.apple-card__header h3 {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.apple-card--highlight {
+  background: linear-gradient(135deg,
+      rgba(0, 113, 227, 0.08),
+      rgba(88, 86, 214, 0.08));
+}
+
+/* Checklist */
+.apple-checklist {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.apple-checklist li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.apple-checklist li svg {
+  width: 12px;
+  height: 12px;
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+/* Tips */
+.apple-tips {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.apple-tips li {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  padding-left: var(--space-3);
+  position: relative;
+}
+
+.apple-tips li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--accent-primary);
+}
+
+/* Progress Card */
+.apple-progress-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.apple-progress-card__circle {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.apple-progress-card__circle svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.apple-progress-card__value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.apple-progress-card__label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* ============================================
+     MODAL - COMPACT
+     ============================================ */
+
+.apple-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--bg-overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 300;
+  animation: fadeIn var(--duration-fast) var(--ease-out);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.apple-modal {
+  width: 100%;
+  max-width: 340px;
+  padding: var(--space-6);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  text-align: center;
+  animation: scaleIn var(--duration-normal) var(--spring);
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.apple-modal__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto var(--space-4);
+  background: linear-gradient(135deg, var(--accent-primary), #5856d6);
+  border-radius: 50%;
+  color: white;
+}
+
+.apple-modal__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.apple-modal__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.apple-modal__description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-4);
+}
+
+.apple-modal__warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  margin-bottom: var(--space-4);
+  background: var(--warning-bg);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  color: var(--warning);
+}
+
+.apple-modal__warning svg {
+  width: 14px;
+  height: 14px;
+}
+
+.apple-modal__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.apple-modal__actions .apple-btn {
+  flex: 1;
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.apple-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ============================================
+     TOAST NOTIFICATION - COMPACT
+     ============================================ */
+
+.apple-toast {
+  position: fixed;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  z-index: 400;
+  animation: slideUp var(--duration-normal) var(--spring);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.apple-toast svg {
+  width: 16px;
+  height: 16px;
+  color: var(--error);
+  flex-shrink: 0;
+}
+
+.apple-toast button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-left: var(--space-1);
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.apple-toast button:hover {
+  background: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.apple-toast button svg {
+  width: 10px;
+  height: 10px;
+  color: inherit;
+}
+
+/* ============================================
+     RESPONSIVE UTILITIES
+     ============================================ */
+
+/* Hide on mobile */
+@media (max-width: 639px) {
+  .apple-nav__menu-btn {
+    display: flex;
+  }
+}
+
+/* Hide on desktop */
+@media (min-width: 1024px) {
+  .apple-nav__menu-btn {
+    display: none;
+  }
+}
+
+/* ============================================
+     ANIMATIONS - REDUCED MOTION
+     ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-  
-  html {
-    font-size: 16px;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-  }
-  
-  body {
-    font-family: var(--font-family);
-    font-size: var(--text-base);
-    line-height: var(--leading-normal);
-    color: var(--text-primary);
-    background: var(--bg-primary);
-  }
-  
-  /* ============================================
-     LOADING SCREEN
-     ============================================ */
-  
-  .apple-loading {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-primary);
-    z-index: 9999;
-  }
-  
-  .apple-loading__content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-6);
-    text-align: center;
-    padding: var(--space-8);
-  }
-  
-  .apple-loading__logo {
-    position: relative;
-    width: 64px;
-    height: 64px;
-  }
-  
-  .apple-loading__ring {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-  }
-  
-  .apple-loading__ring-segment {
-    position: absolute;
-    inset: 0;
-    border: 3px solid var(--border-secondary);
-    border-top-color: var(--accent-primary);
-    border-radius: 50%;
-    animation: spin 1s var(--ease-in-out) infinite;
-  }
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  
-  .apple-loading__title {
-    font-size: var(--text-xl);
-    font-weight: var(--font-semibold);
-    letter-spacing: var(--tracking-tight);
-    color: var(--text-primary);
-  }
-  
-  .apple-loading__subtitle {
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-  }
-  
-  /* ============================================
-     ERROR SCREEN
-     ============================================ */
-  
-  .apple-error {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-primary);
-    padding: var(--space-6);
-  }
-  
-  .apple-error__card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-4);
-    max-width: 400px;
-    padding: var(--space-10);
-    text-align: center;
-    background: var(--bg-elevated);
-    border-radius: var(--radius-2xl);
-    box-shadow: var(--shadow-xl);
-  }
-  
-  .apple-error__icon {
-    width: 56px;
-    height: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--error-bg);
-    border-radius: 50%;
-    color: var(--error);
-  }
-  
-  .apple-error__icon svg {
-    width: 28px;
-    height: 28px;
-  }
-  
-  .apple-error__title {
-    font-size: var(--text-xl);
-    font-weight: var(--font-semibold);
-    letter-spacing: var(--tracking-tight);
-  }
-  
-  .apple-error__message {
-    font-size: var(--text-base);
-    color: var(--text-secondary);
-    line-height: var(--leading-relaxed);
-  }
-  
-  /* ============================================
-     MAIN INTERVIEW CONTAINER
-     ============================================ */
-  
-  .apple-interview {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    min-height: 100dvh;
-    background: var(--bg-secondary);
-  }
-  
-  /* ============================================
-     NAVIGATION BAR
-     ============================================ */
-  
-  .apple-nav {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(255, 255, 255, 0.72);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    border-bottom: 0.5px solid var(--border-secondary);
-  }
-  
-  @media (prefers-color-scheme: dark) {
-    .apple-nav {
-      background: rgba(29, 29, 31, 0.72);
-    }
-  }
-  
-  .apple-nav__container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: var(--nav-height);
-    padding: 0 var(--space-4);
-    max-width: var(--container-max);
-    margin: 0 auto;
-  }
-  
-  .apple-nav__left {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-  
-  .apple-nav__menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: background var(--duration-fast) var(--ease-out);
-  }
-  
-  .apple-nav__menu-btn:hover {
-    background: var(--bg-tertiary);
-  }
-  
-  .apple-nav__menu-icon {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    width: 18px;
-  }
-  
-  .apple-nav__menu-icon span {
-    display: block;
-    height: 2px;
-    background: var(--text-primary);
-    border-radius: 1px;
-    transition: all var(--duration-fast) var(--ease-out);
-  }
-  
-  .apple-nav__brand {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  
-  .apple-nav__logo {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: linear-gradient(135deg, var(--accent-primary), #5856d6);
-    border-radius: var(--radius-sm);
-    color: white;
-  }
-  
-  .apple-nav__logo svg {
-    width: 16px;
-    height: 16px;
-  }
-  
-  .apple-nav__title {
-    font-size: var(--text-lg);
-    font-weight: var(--font-semibold);
-    letter-spacing: var(--tracking-tight);
-    display: none;
-  }
-  
-  @media (min-width: 640px) {
-    .apple-nav__title {
-      display: block;
-    }
-  }
-  
-  .apple-nav__center {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    padding: 0 var(--space-4);
-  }
-  
-  .apple-progress {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    max-width: 200px;
-    width: 100%;
-  }
-  
-  .apple-progress__bar {
-    flex: 1;
-    height: 4px;
-    background: var(--border-primary);
-    border-radius: var(--radius-full);
-    overflow: hidden;
-  }
-  
-  .apple-progress__fill {
-    height: 100%;
-    background: var(--accent-primary);
-    border-radius: var(--radius-full);
-    transition: width var(--duration-normal) var(--ease-out);
-  }
-  
-  .apple-progress__text {
-    font-size: var(--text-xs);
-    font-weight: var(--font-medium);
-    color: var(--text-secondary);
-    white-space: nowrap;
-  }
-  
-  .apple-nav__right {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  
-  .apple-status {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-1) var(--space-2);
-    font-size: var(--text-xs);
-    font-weight: var(--font-medium);
-    color: var(--text-secondary);
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-full);
-  }
-  
-  .apple-status__icon {
-    display: flex;
-    width: 14px;
-    height: 14px;
-    color: var(--success);
-  }
-  
-  .apple-status__icon svg {
-    width: 100%;
-    height: 100%;
-  }
-  
-  .apple-status--offline .apple-status__icon {
-    color: var(--error);
-  }
-  
-  .apple-status--recording {
-    background: var(--error-bg);
-    color: var(--error);
-  }
-  
-  .apple-status__dot {
-    width: 6px;
-    height: 6px;
-    background: var(--error);
-    border-radius: 50%;
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-  
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-  
-  .apple-status__text {
-    display: none;
-  }
-  
-  @media (min-width: 480px) {
-    .apple-status__text {
-      display: block;
-    }
-  }
-  
-  .apple-nav__camera {
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    background: var(--bg-tertiary);
-    border: 2px solid var(--border-primary);
-  }
-  
-  .apple-nav__camera-video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: scaleX(-1);
-  }
-  
-  /* ============================================
-     SIDEBAR (Mobile)
-     ============================================ */
-  
-  .apple-sidebar {
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity var(--duration-normal) var(--ease-out);
-  }
-  
-  .apple-sidebar--open {
-    pointer-events: auto;
-    opacity: 1;
-  }
-  
-  .apple-sidebar__backdrop {
-    position: absolute;
-    inset: 0;
-    background: var(--bg-overlay);
-  }
-  
-  .apple-sidebar__content {
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: min(320px, 85vw);
-    background: var(--bg-elevated);
-    transform: translateX(-100%);
-    transition: transform var(--duration-normal) var(--ease-out);
-    display: flex;
-    flex-direction: column;
-    box-shadow: var(--shadow-xl);
-  }
-  
-  .apple-sidebar--open .apple-sidebar__content {
-    transform: translateX(0);
-  }
-  
-  .apple-sidebar__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-4);
-    border-bottom: 0.5px solid var(--border-secondary);
-  }
-  
-  .apple-sidebar__title {
-    font-size: var(--text-lg);
-    font-weight: var(--font-semibold);
-  }
-  
-  .apple-sidebar__close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: var(--bg-tertiary);
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: all var(--duration-fast) var(--ease-out);
-  }
-  
-  .apple-sidebar__close:hover {
-    background: var(--border-primary);
-    color: var(--text-primary);
-  }
-  
-  .apple-sidebar__close svg {
-    width: 16px;
-    height: 16px;
-  }
-  
-  /* Question List */
-  .question-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: var(--space-2);
-  }
-  
-  .question-list__item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    width: 100%;
-    padding: var(--space-3);
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    text-align: left;
-    transition: background var(--duration-fast) var(--ease-out);
-  }
-  
-  .question-list__item:hover {
-    background: var(--bg-tertiary);
-  }
-  
-  .question-list__item--active {
-    background: var(--accent-primary);
-    color: white;
-  }
-  
-  .question-list__item--active:hover {
-    background: var(--accent-hover);
-  }
-  
-  .question-list__number {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    font-size: var(--text-xs);
-    font-weight: var(--font-semibold);
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-sm);
-    flex-shrink: 0;
-  }
-  
-  .question-list__item--active .question-list__number {
-    background: rgba(255, 255, 255, 0.2);
-  }
-  
-  .question-list__icon {
-    width: 18px;
-    height: 18px;
-    color: var(--text-tertiary);
-    flex-shrink: 0;
-  }
-  
-  .question-list__icon svg {
-    width: 100%;
-    height: 100%;
-  }
-  
-  .question-list__item--active .question-list__icon {
-    color: rgba(255, 255, 255, 0.8);
-  }
-  
-  .question-list__text {
-    flex: 1;
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  .question-list__item--active .question-list__text {
-    color: white;
-  }
-  
-  .question-list__check {
-    width: 18px;
-    height: 18px;
-    color: var(--success);
-    flex-shrink: 0;
-  }
-  
-  .question-list__check svg {
-    width: 100%;
-    height: 100%;
-  }
-  
-  .question-list__item--active .question-list__check {
-    color: white;
-  }
-  
-  /* ============================================
-     MAIN CONTENT AREA
-     ============================================ */
-  
-  .apple-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    max-width: var(--container-max);
-    margin: 0 auto;
-    min-width: 100vw;
-  }
-  
-  /* Alert Banner */
-  .apple-alert {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-3);
-    margin: var(--space-4);
-    padding: var(--space-4);
-    background: var(--warning-bg);
-    border: 1px solid var(--warning);
-    border-radius: var(--radius-lg);
-    animation: slideDown var(--duration-normal) var(--ease-out);
-  }
-  
-  @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .apple-alert__icon {
-    flex-shrink: 0;
-    width: 24px;
-    height: 24px;
-    color: var(--warning);
-  }
-  
-  .apple-alert__icon svg {
-    width: 100%;
-    height: 100%;
-  }
-  
-  .apple-alert__content {
-    flex: 1;
-  }
-  
-  .apple-alert__content strong {
-    display: block;
-    font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
-    color: var(--text-primary);
-    margin-bottom: var(--space-1);
-  }
-  
-  .apple-alert__content p {
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-  }
-  
-  .apple-alert__dismiss {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: all var(--duration-fast) var(--ease-out);
-  }
-  
-  .apple-alert__dismiss:hover {
-    background: rgba(0, 0, 0, 0.05);
-    color: var(--text-primary);
-  }
-  
-  .apple-alert__dismiss svg {
-    width: 16px;
-    height: 16px;
-  }
-  
-  /* Content Container */
-  .apple-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-4);
-    padding-top: 0;
-  }
-  
-  @media (min-width: 1024px) {
-    .apple-content {
-      flex-direction: row;
-      align-items: flex-start;
-    }
-    
-    .apple-content--code {
-      height: calc(100vh - var(--nav-height) - var(--space-8));
-    }
-  }
-  
-  /* ============================================
-     PANELS
-     ============================================ */
-  
-  .apple-panel {
-    background: var(--bg-elevated);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-md);
-    overflow: hidden;
-  }
-  
-  .apple-panel--question {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 100vw;
-  }
-  
-  @media (min-width: 1024px) {
-    .apple-panel--question {
-      max-width: 100%;
-      min-width: var(--panel-min-width);
-    }
-    
-    .apple-content--code .apple-panel--question {
-      height: 100%;
-      overflow: hidden;
-    }
-  }
-  
-  .apple-panel__scroll {
-    flex: 1;
-    overflow-y: auto;
-    padding: var(--space-6);
-  }
-  
-  @media (min-width: 768px) {
-    .apple-panel__scroll {
-      padding: var(--space-8);
-    }
-  }
-  
-  .apple-panel--sidebar {
-    display: flex;
-    justify-content: flex-end;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
-  }
-  
-  @media (min-width: 1024px) {
-    .apple-panel--sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-4);
-      width: var(--sidebar-width);
-      flex-shrink: 0;
-      background: transparent;
-      box-shadow: none;
-    }
-  }
-  
-  .apple-panel--editor {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 400px;
-  }
-  
-  @media (min-width: 1024px) {
-    .apple-panel--editor {
-      height: 100%;
-      min-height: auto;
-    }
-  }
-  
-  /* ============================================
-     QUESTION HEADER
+/* ============================================
+     SCROLLBAR STYLING - COMPACT
      ============================================ */
-  
-  .apple-question-header {
-    margin-bottom: var(--space-6);
-  }
-  
-  .apple-question-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
-  }
-  
-  .apple-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-xs);
-    font-weight: var(--font-medium);
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-full);
-    color: var(--text-secondary);
-  }
-  
-  .apple-badge svg {
-    width: 12px;
-    height: 12px;
-  }
-  
-  .apple-badge--easy {
-    background: var(--success-bg);
-    color: var(--success);
-  }
-  
-  .apple-badge--medium {
-    background: var(--warning-bg);
-    color: var(--warning);
-  }
-  
-  .apple-badge--hard {
-    background: var(--error-bg);
-    color: var(--error);
-  }
-  
-  .apple-question-title {
-    font-size: var(--text-2xl);
-    font-weight: var(--font-semibold);
-    letter-spacing: var(--tracking-tight);
-    line-height: var(--leading-tight);
-    color: var(--text-primary);
-  }
-  
-  @media (min-width: 768px) {
-    .apple-question-title {
-      font-size: var(--text-3xl);
-    }
-  }
-  
-  .apple-duration {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-top: var(--space-3);
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-    background: var(--bg-secondary);
-    border-radius: var(--radius-md);
-  }
-  
-  .apple-duration svg {
-    width: 16px;
-    height: 16px;
-  }
-  
-  /* ============================================
-     DESCRIPTION & EXAMPLES
-     ============================================ */
-  
-  .apple-description {
-    margin-bottom: var(--space-6);
-  }
-  
-  .apple-description p {
-    font-size: var(--text-base);
-    line-height: var(--leading-relaxed);
-    color: var(--text-secondary);
-    margin-bottom: var(--space-4);
-  }
-  
-  .apple-description p:last-child {
-    margin-bottom: 0;
-  }
-  
-  .apple-examples {
-    margin-bottom: var(--space-6);
-  }
-  
-  .apple-examples h3 {
-    font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-tertiary);
-    margin-bottom: var(--space-4);
-  }
-  
-  .apple-example {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    margin-bottom: var(--space-3);
-  }
-  
-  .apple-example:last-child {
-    margin-bottom: 0;
-  }
-  
-  .apple-example__label {
-    padding: var(--space-2) var(--space-4);
-    font-size: var(--text-xs);
-    font-weight: var(--font-semibold);
-    color: var(--text-tertiary);
-    background: var(--bg-tertiary);
-    border-bottom: 0.5px solid var(--border-secondary);
-  }
-  
-  .apple-example__row {
-    display: flex;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 0.5px solid var(--border-secondary);
-  }
-  
-  .apple-example__row:last-child {
-    border-bottom: none;
-  }
-  
-  .apple-example__key {
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    color: var(--text-secondary);
-    min-width: 60px;
-  }
-  
-  .apple-example__value {
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    color: var(--text-primary);
-    word-break: break-all;
-  }
-  
-  /* ============================================
-     ANSWER SECTIONS
-     ============================================ */
-  
-  .apple-answer {
-    margin-bottom: var(--space-8);
-  }
-  
-  /* Textarea */
-  .apple-textarea {
-    width: 100%;
-    min-height: 200px;
-    padding: var(--space-4);
-    font-family: var(--font-family);
-    font-size: var(--text-base);
-    line-height: var(--leading-relaxed);
-    color: var(--text-primary);
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-lg);
-    resize: vertical;
-    transition: all var(--duration-fast) var(--ease-out);
-  }
-  
-  .apple-textarea:focus {
-    outline: none;
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2);
-  }
-  
-  .apple-textarea::placeholder {
-    color: var(--text-tertiary);
-  }
-  
-  /* MCQ Options */
-  .apple-mcq {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-  
-  .apple-mcq__option {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-4);
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-lg);
-    cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-out);
-  }
-  
-  .apple-mcq__option:hover {
-    background: var(--bg-tertiary);
-    border-color: var(--border-primary);
-  }
-  
-  .apple-mcq__option--selected {
-    background: rgba(0, 113, 227, 0.08);
-    border-color: var(--accent-primary);
-  }
-  
-  .apple-mcq__option input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-  }
-  
-  .apple-mcq__radio {
-    position: relative;
-    width: 22px;
-    height: 22px;
-    border: 2px solid var(--border-primary);
-    border-radius: 50%;
-    flex-shrink: 0;
-    transition: all var(--duration-fast) var(--ease-out);
-  }
-  
-  .apple-mcq__option--selected .apple-mcq__radio {
-    border-color: var(--accent-primary);
-    background: var(--accent-primary);
-  }
-  
-  .apple-mcq__radio::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 8px;
-    height: 8px;
-    background: white;
-    border-radius: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    transition: transform var(--duration-fast) var(--spring);
-  }
-  
-  .apple-mcq__option--selected .apple-mcq__radio::after {
-    transform: translate(-50%, -50%) scale(1);
-  }
-  
-  .apple-mcq__text {
-    font-size: var(--text-base);
-    color: var(--text-primary);
-    line-height: var(--leading-normal);
-  }
-  
-  /* Audio Recorder */
-  .apple-audio-recorder {
-    padding: var(--space-6);
-    background: var(--bg-secondary);
-    border-radius: var(--radius-xl);
-    text-align: center;
-  }
-  
-  /* ============================================
-     NAVIGATION CONTROLS
-     ============================================ */
-  
-  .apple-nav-controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    padding-top: var(--space-6);
-    border-top: 0.5px solid var(--border-secondary);
-  }
-  
-  .apple-dots {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  
-  .apple-dot {
-    width: 8px;
-    height: 8px;
-    padding: 0;
-    background: var(--border-primary);
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-out);
-  }
-  
-  .apple-dot:hover {
-    background: var(--text-tertiary);
-    transform: scale(1.2);
-  }
-  
-  .apple-dot--active {
-    background: var(--accent-primary);
-    transform: scale(1.2);
-  }
-  
-  .apple-dot--answered {
-    background: var(--success);
-  }
-  
-  .apple-dot--active.apple-dot--answered {
-    background: var(--accent-primary);
-  }
-  
-  /* ============================================
-     BUTTONS
-     ============================================ */
-  
-  .apple-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-5);
-    font-family: var(--font-family);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    line-height: 1;
-    border: none;
-    border-radius: var(--radius-full);
-    cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-out);
-    white-space: nowrap;
-  }
-  
-  .apple-btn svg {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-  }
-  
-  .apple-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-  
-  .apple-btn--primary {
-    background: var(--accent-primary);
-    color: white;
-  }
-  
-  .apple-btn--primary:hover:not(:disabled) {
-    background: var(--accent-hover);
-    transform: scale(1.02);
-  }
-  
-  .apple-btn--primary:active:not(:disabled) {
-    background: var(--accent-pressed);
-    transform: scale(0.98);
-  }
-  
-  .apple-btn--secondary {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-  }
-  
-  .apple-btn--secondary:hover:not(:disabled) {
-    background: var(--border-primary);
-  }
-  
-  .apple-btn--ghost {
-    background: transparent;
-    color: var(--text-secondary);
-  }
-  
-  .apple-btn--ghost:hover:not(:disabled) {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-  }
-  
-  .apple-btn--accent {
-    background: linear-gradient(135deg, #34c759, #30d158);
-    color: white;
-  }
-  
-  .apple-btn--accent:hover:not(:disabled) {
-    transform: scale(1.02);
-    box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
-  }
-  
-  /* ============================================
-     CODE EDITOR PANEL
-     ============================================ */
-  
-  .apple-editor-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background: var(--bg-secondary);
-    border-bottom: 0.5px solid var(--border-secondary);
-  }
-  
-  .apple-editor-lang {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    color: var(--text-primary);
-    background: var(--bg-elevated);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: background var(--duration-fast) var(--ease-out);
-  }
-  
-  .apple-editor-lang:hover {
-    background: var(--bg-tertiary);
-  }
-  
-  .apple-editor-lang svg {
-    width: 16px;
-    height: 16px;
-    color: var(--text-tertiary);
-  }
-  
-  .apple-editor-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  
-  .apple-editor-actions .apple-btn span {
-    display: none;
-  }
-  
-  @media (min-width: 640px) {
-    .apple-editor-actions .apple-btn span {
-      display: inline;
-    }
-  }
-  
-  .apple-editor-body {
-    flex: 1;
-    min-height: 300px;
-    overflow: hidden;
-  }
-  
-  @media (min-width: 1024px) {
-    .apple-editor-body {
-      min-height: 0;
-    }
-  }
-  
-  /* ============================================
-     CONSOLE PANEL
-     ============================================ */
-  
-  .apple-console {
-    border-top: 0.5px solid var(--border-secondary);
-    background: var(--bg-secondary);
-  }
-  
-  .apple-console-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-2) var(--space-4);
-    border-bottom: 0.5px solid var(--border-secondary);
-  }
-  
-  .apple-console-tab {
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    color: var(--text-secondary);
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-out);
-  }
-  
-  .apple-console-tab:hover {
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
-  }
-  
-  .apple-console-tab--active {
-    color: var(--text-primary);
-    background: var(--bg-elevated);
-  }
-  
-  .apple-console-body {
-    padding: var(--space-4);
-    min-height: 120px;
-    max-height: 200px;
-    overflow-y: auto;
-  }
-  
-  .apple-console-testcase,
-  .apple-console-result {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-  
-  .apple-console-row {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-  
-  .apple-console-row label {
-    font-size: var(--text-xs);
-    font-weight: var(--font-medium);
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  
-  .apple-console-row code {
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    color: var(--text-primary);
-    padding: var(--space-2) var(--space-3);
-    background: var(--bg-elevated);
-    border-radius: var(--radius-md);
-  }
-  
-  .apple-console-result__header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-3);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
-  }
-  
-  .apple-console-result__header svg {
-    width: 20px;
-    height: 20px;
-  }
-  
-  .apple-console-result--success .apple-console-result__header {
-    background: var(--success-bg);
-    color: var(--success);
-  }
-  
-  .apple-console-result--error .apple-console-result__header {
-    background: var(--error-bg);
-    color: var(--error);
-  }
-  
-  .apple-console-result__stats {
-    display: flex;
-    gap: var(--space-4);
-    margin-left: auto;
-    font-size: var(--text-xs);
-    font-weight: var(--font-regular);
-    color: var(--text-secondary);
-  }
-  
-  .apple-console-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    padding: var(--space-8);
-    color: var(--text-tertiary);
-    font-size: var(--text-sm);
-  }
-  
-  .apple-console-empty svg {
-    width: 32px;
-    height: 32px;
-    opacity: 0.5;
-  }
-  
-  /* ============================================
-     CAMERA PREVIEW
-     ============================================ */
-  
-  .apple-camera {
-    position: relative;
-    aspect-ratio: 4/3;
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-xl);
-    overflow: hidden;
-    box-shadow: var(--shadow-md);
-  }
-  
-  .apple-camera__video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: scaleX(-1);
-  }
-  
-  .apple-camera__overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      to bottom,
-      transparent 60%,
-      rgba(0, 0, 0, 0.6)
-    );
-    pointer-events: none;
-  }
-  
-  .apple-camera__rec {
-    position: absolute;
-    top: var(--space-3);
-    left: var(--space-3);
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-1) var(--space-2);
-    font-size: var(--text-xs);
-    font-weight: var(--font-medium);
-    color: white;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
-    border-radius: var(--radius-sm);
-  }
-  
-  .apple-camera__dot {
-    width: 6px;
-    height: 6px;
-    background: var(--error);
-    border-radius: 50%;
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-  
-  .apple-camera__label {
-    position: absolute;
-    bottom: var(--space-3);
-    left: var(--space-3);
-    right: var(--space-3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    padding: var(--space-2);
-    font-size: var(--text-xs);
-    font-weight: var(--font-medium);
-    color: white;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
-    border-radius: var(--radius-md);
-  }
-  
-  .apple-camera__label svg {
-    width: 14px;
-    height: 14px;
-  }
-  
-  /* ============================================
-     SIDEBAR CARDS
-     ============================================ */
-  
-  .apple-card {
-    background: var(--bg-elevated);
-    border-radius: var(--radius-xl);
-    padding: var(--space-5);
-    box-shadow: var(--shadow-md);
-  }
-  
-  .apple-card__header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
-  }
-  
-  .apple-card__header svg {
-    width: 20px;
-    height: 20px;
-    color: var(--accent-primary);
-  }
-  
-  .apple-card__header h3 {
-    font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
-    color: var(--text-primary);
-  }
-  
-  .apple-card--highlight {
-    background: linear-gradient(
-      135deg,
-      rgba(0, 113, 227, 0.08),
-      rgba(88, 86, 214, 0.08)
-    );
-  }
-  
-  /* Checklist */
-  .apple-checklist {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-  
-  .apple-checklist li {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-  }
-  
-  .apple-checklist li svg {
-    width: 16px;
-    height: 16px;
-    color: var(--success);
-    flex-shrink: 0;
-  }
-  
-  /* Tips */
-  .apple-tips {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  
-  .apple-tips li {
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-    padding-left: var(--space-4);
-    position: relative;
-  }
-  
-  .apple-tips li::before {
-    content: '•';
-    position: absolute;
-    left: 0;
-    color: var(--accent-primary);
-  }
-  
-  /* Progress Card */
-  .apple-progress-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-3);
-  }
-  
-  .apple-progress-card__circle {
-    position: relative;
-    width: 80px;
-    height: 80px;
-  }
-  
-  .apple-progress-card__circle svg {
-    width: 100%;
-    height: 100%;
-    transform: rotate(-90deg);
-  }
-  
-  .apple-progress-card__value {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--text-lg);
-    font-weight: var(--font-semibold);
-    color: var(--text-primary);
-  }
-  
-  .apple-progress-card__label {
-    font-size: var(--text-xs);
-    color: var(--text-secondary);
-  }
-  
-  /* ============================================
-     MODAL
-     ============================================ */
-  
-  .apple-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-6);
-    background: var(--bg-overlay);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 300;
-    animation: fadeIn var(--duration-fast) var(--ease-out);
-  }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  
-  .apple-modal {
-    width: 100%;
-    max-width: 400px;
-    padding: var(--space-8);
-    background: var(--bg-elevated);
-    border-radius: var(--radius-2xl);
-    box-shadow: var(--shadow-xl);
-    text-align: center;
-    animation: scaleIn var(--duration-normal) var(--spring);
-  }
-  
-  @keyframes scaleIn {
-    from {
-      opacity: 0;
-      transform: scale(0.9);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-  
-  .apple-modal__icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 64px;
-    height: 64px;
-    margin: 0 auto var(--space-5);
-    background: linear-gradient(135deg, var(--accent-primary), #5856d6);
-    border-radius: 50%;
-    color: white;
-  }
-  
-  .apple-modal__icon svg {
-    width: 28px;
-    height: 28px;
-  }
-  
-  .apple-modal__title {
-    font-size: var(--text-xl);
-    font-weight: var(--font-semibold);
-    letter-spacing: var(--tracking-tight);
-    color: var(--text-primary);
-    margin-bottom: var(--space-3);
-  }
-  
-  .apple-modal__description {
-    font-size: var(--text-base);
-    color: var(--text-secondary);
-    line-height: var(--leading-relaxed);
-    margin-bottom: var(--space-5);
-  }
-  
-  .apple-modal__warning {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    padding: var(--space-3);
-    margin-bottom: var(--space-5);
-    background: var(--warning-bg);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    color: var(--warning);
-  }
-  
-  .apple-modal__warning svg {
-    width: 16px;
-    height: 16px;
-  }
-  
-  .apple-modal__actions {
-    display: flex;
-    gap: var(--space-3);
-  }
-  
-  .apple-modal__actions .apple-btn {
-    flex: 1;
-    padding: var(--space-4);
-    font-size: var(--text-base);
-  }
-  
-  .apple-spinner {
-    width: 18px;
-    height: 18px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  
-  /* ============================================
-     TOAST NOTIFICATION
-     ============================================ */
-  
-  .apple-toast {
-    position: fixed;
-    bottom: var(--space-6);
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-4) var(--space-5);
-    background: var(--bg-elevated);
-    border: 1px solid var(--error);
-    border-radius: var(--radius-full);
-    box-shadow: var(--shadow-lg);
-    font-size: var(--text-sm);
-    color: var(--text-primary);
-    z-index: 400;
-    animation: slideUp var(--duration-normal) var(--spring);
-  }
-  
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateX(-50%) translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-  }
-  
-  .apple-toast svg {
-    width: 18px;
-    height: 18px;
-    color: var(--error);
-    flex-shrink: 0;
-  }
-  
-  .apple-toast button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    margin-left: var(--space-2);
-    background: var(--bg-tertiary);
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: all var(--duration-fast) var(--ease-out);
-  }
-  
-  .apple-toast button:hover {
-    background: var(--border-primary);
-    color: var(--text-primary);
-  }
-  
-  .apple-toast button svg {
-    width: 12px;
-    height: 12px;
-    color: inherit;
-  }
-  
-  /* ============================================
-     RESPONSIVE UTILITIES
-     ============================================ */
-  
-  /* Hide on mobile */
-  @media (max-width: 639px) {
-    .apple-nav__menu-btn {
-      display: flex;
-    }
-  }
-  
-  /* Hide on desktop */
-  @media (min-width: 1024px) {
-    .apple-nav__menu-btn {
-      display: none;
-    }
-  }
-  
-  /* ============================================
-     ANIMATIONS
-     ============================================ */
-  
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-  
-  /* ============================================
-     SCROLLBAR STYLING
-     ============================================ */
-  
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background: var(--border-primary);
-    border-radius: 4px;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-tertiary);
-  }
-  
-  /* Firefox */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-primary) transparent;
-  }
-  
-  /* ============================================
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+}
+
+/* ============================================
      PRINT STYLES
      ============================================ */
-  
-  @media print {
-    .apple-nav,
-    .apple-sidebar,
-    .apple-camera,
-    .apple-nav-controls,
-    .apple-toast,
-    .apple-modal-backdrop {
-      display: none !important;
-    }
-    
-    .apple-interview {
-      background: white;
-    }
-    
-    .apple-panel {
-      box-shadow: none;
-      border: 1px solid #ddd;
-    }
+
+@media print {
+
+  .apple-nav,
+  .apple-sidebar,
+  .apple-camera,
+  .apple-nav-controls,
+  .apple-toast,
+  .apple-modal-backdrop {
+    display: none !important;
   }
-  
-  /* ============================================
+
+  .apple-interview {
+    background: white;
+    height: auto;
+    overflow: visible;
+  }
+
+  .apple-panel {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}
+
+/* ============================================
      FOCUS STATES (Accessibility)
      ============================================ */
-  
-  :focus-visible {
-    outline: 2px solid var(--accent-primary);
-    outline-offset: 2px;
-  }
-  
-  button:focus-visible,
-  a:focus-visible,
-  input:focus-visible,
-  textarea:focus-visible,
-  select:focus-visible {
-    outline: 2px solid var(--accent-primary);
-    outline-offset: 2px;
-  }
-  
-  /* ============================================
+
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* ============================================
      HIGH CONTRAST MODE
      ============================================ */
-  
-  @media (prefers-contrast: high) {
-    :root {
-      --border-primary: #000000;
-      --border-secondary: #000000;
-    }
-    
-    .apple-btn--primary {
-      border: 2px solid white;
-    }
-    
-    .apple-badge {
-      border: 1px solid currentColor;
-    }
+
+@media (prefers-contrast: high) {
+  :root {
+    --border-primary: #000000;
+    --border-secondary: #000000;
   }
-  
-  /* ============================================
+
+  .apple-btn--primary {
+    border: 2px solid white;
+  }
+
+  .apple-badge {
+    border: 1px solid currentColor;
+  }
+}
+
+/* ============================================
      SAFE AREA INSETS (iOS)
      ============================================ */
-  
-  @supports (padding: env(safe-area-inset-bottom)) {
-    .apple-nav__container {
-      padding-left: max(var(--space-4), env(safe-area-inset-left));
-      padding-right: max(var(--space-4), env(safe-area-inset-right));
-    }
-    
-    .apple-content {
-      padding-left: max(var(--space-4), env(safe-area-inset-left));
-      padding-right: max(var(--space-4), env(safe-area-inset-right));
-      padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
-    }
-    
-    .apple-toast {
-      bottom: max(var(--space-6), calc(env(safe-area-inset-bottom) + var(--space-4)));
-    }
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  .apple-nav__container {
+    padding-left: max(var(--space-3), env(safe-area-inset-left));
+    padding-right: max(var(--space-3), env(safe-area-inset-right));
   }
-  
-  /* ============================================
-   AUDIO VISUALIZER COMPONENT
-   ============================================ */
+
+  .apple-content {
+    padding-left: max(var(--space-3), env(safe-area-inset-left));
+    padding-right: max(var(--space-3), env(safe-area-inset-right));
+  }
+
+  .apple-toast {
+    bottom: max(var(--space-4), calc(env(safe-area-inset-bottom) + var(--space-2)));
+  }
+}
+
+/* ============================================
+     AUDIO VISUALIZER COMPONENT - COMPACT
+     ============================================ */
 
 .audio-visualizer {
   position: relative;
@@ -1978,42 +1909,40 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(
-    135deg,
-    var(--bg-secondary) 0%,
-    var(--bg-tertiary) 100%
-  );
-  border-radius: var(--radius-2xl);
+  background: linear-gradient(135deg,
+      var(--bg-secondary) 0%,
+      var(--bg-tertiary) 100%);
+  border-radius: var(--radius-xl);
   overflow: hidden;
 }
 
-/* Variants */
+/* Variants - COMPACT */
 .audio-visualizer--default {
   width: 100%;
-  aspect-ratio: 4/3;
-  min-height: 320px;
-  max-height: 480px;
+  aspect-ratio: 16/9;
+  min-height: 180px;
+  max-height: 240px;
 }
 
 .audio-visualizer--compact {
   width: 100%;
-  aspect-ratio: 16/9;
-  min-height: 200px;
-  max-height: 300px;
+  aspect-ratio: 2/1;
+  min-height: 140px;
+  max-height: 180px;
 }
 
 .audio-visualizer--minimal {
-  width: 200px;
-  height: 200px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
 }
 
 /* Outer Ring */
 .audio-visualizer__ring {
   position: absolute;
-  inset: 8px;
+  inset: 6px;
   border-radius: inherit;
-  border: 2px solid var(--border-secondary);
+  border: 1.5px solid var(--border-secondary);
   pointer-events: none;
   transition: border-color var(--duration-normal) var(--ease-out);
 }
@@ -2024,9 +1953,9 @@
 
 .audio-visualizer__ring-progress {
   position: absolute;
-  inset: -2px;
+  inset: -1.5px;
   border-radius: inherit;
-  border: 2px solid transparent;
+  border: 1.5px solid transparent;
   border-top-color: var(--accent-primary);
   opacity: 0;
   transition: opacity var(--duration-normal) var(--ease-out);
@@ -2038,10 +1967,13 @@
 }
 
 @keyframes ringPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: rotate(0deg);
     opacity: 0.5;
   }
+
   50% {
     transform: rotate(180deg);
     opacity: 1;
@@ -2067,24 +1999,24 @@
   text-align: center;
 }
 
-/* Start Button */
+/* Start Button - COMPACT */
 .audio-visualizer__start-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-6);
+  gap: var(--space-2);
+  padding: var(--space-4);
   background: var(--bg-elevated);
   border: none;
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   cursor: pointer;
   transition: all var(--duration-normal) var(--ease-out);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
 }
 
 .audio-visualizer__start-btn:hover {
   transform: scale(1.05);
-  box-shadow: var(--shadow-xl);
+  box-shadow: var(--shadow-lg);
 }
 
 .audio-visualizer__start-btn:active {
@@ -2092,13 +2024,13 @@
 }
 
 .audio-visualizer__start-btn svg {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   color: var(--accent-primary);
 }
 
 .audio-visualizer__start-btn span {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
 }
@@ -2108,21 +2040,21 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   color: var(--text-secondary);
 }
 
 .audio-visualizer__spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border-secondary);
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--border-secondary);
   border-top-color: var(--accent-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 
 .audio-visualizer__loading span {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-weight: var(--font-medium);
 }
 
@@ -2131,28 +2063,28 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-6);
+  gap: var(--space-2);
+  padding: var(--space-4);
   background: var(--error-bg);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
 }
 
 .audio-visualizer__error svg {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   color: var(--error);
 }
 
 .audio-visualizer__error span {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-weight: var(--font-medium);
   color: var(--error);
 }
 
 .audio-visualizer__retry-btn {
-  margin-top: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--text-sm);
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
   font-weight: var(--font-medium);
   color: var(--text-inverse);
   background: var(--error);
@@ -2167,12 +2099,12 @@
   transform: scale(1.02);
 }
 
-/* Status Bar */
+/* Status Bar - COMPACT */
 .audio-visualizer__status {
   position: absolute;
-  top: var(--space-4);
-  left: var(--space-4);
-  right: var(--space-4);
+  top: var(--space-2);
+  left: var(--space-2);
+  right: var(--space-2);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2182,8 +2114,8 @@
 .audio-visualizer__indicator {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -2198,8 +2130,8 @@
 }
 
 .audio-visualizer__dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   background: var(--text-tertiary);
   border-radius: 50%;
   transition: background var(--duration-fast) var(--ease-out);
@@ -2211,10 +2143,13 @@
 }
 
 @keyframes recordingPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.6;
     transform: scale(0.8);
@@ -2222,7 +2157,7 @@
 }
 
 .audio-visualizer__label {
-  font-size: var(--text-xs);
+  font-size: 9px;
   font-weight: var(--font-semibold);
   color: var(--text-primary);
   text-transform: uppercase;
@@ -2230,9 +2165,9 @@
 }
 
 .audio-visualizer__timer {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-2);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-weight: var(--font-medium);
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.9);
@@ -2248,14 +2183,14 @@
   }
 }
 
-/* Audio Level Meter */
+/* Audio Level Meter - COMPACT */
 .audio-visualizer__meter {
   position: absolute;
-  bottom: 80px;
+  bottom: 60px;
   left: 50%;
   transform: translateX(-50%);
-  width: 200px;
-  height: 4px;
+  width: 160px;
+  height: 3px;
   background: var(--border-secondary);
   border-radius: var(--radius-full);
   overflow: hidden;
@@ -2270,15 +2205,15 @@
   transition: transform 0.1s ease-out, background-color 0.2s ease-out;
 }
 
-/* Controls */
+/* Controls - COMPACT */
 .audio-visualizer__controls {
   position: absolute;
-  bottom: var(--space-4);
+  bottom: var(--space-2);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   z-index: 20;
 }
 
@@ -2286,20 +2221,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  font-size: var(--text-sm);
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
   font-weight: var(--font-semibold);
   border: none;
   border-radius: var(--radius-full);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .audio-visualizer__btn svg {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
 }
 
 .audio-visualizer__btn--primary {
@@ -2313,8 +2248,8 @@
 }
 
 .audio-visualizer__btn--secondary {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   background: var(--bg-elevated);
   color: var(--text-primary);
@@ -2333,118 +2268,123 @@
   opacity: 0.9;
 }
 
-/* Waveform Decoration */
+/* Waveform Decoration - COMPACT */
 .audio-visualizer__waveform {
   position: absolute;
-  bottom: 120px;
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 3px;
-  height: 60px;
+  gap: 2px;
+  height: 40px;
   z-index: 15;
   pointer-events: none;
 }
 
 .audio-visualizer__wave-bar {
-  width: 4px;
-  min-height: 4px;
+  width: 3px;
+  min-height: 3px;
   background: var(--accent-primary);
-  border-radius: 2px;
+  border-radius: 1.5px;
   opacity: 0.6;
   transition: height 0.15s ease-out;
 }
 
 /* ============================================
-   AUDIO QUESTION SECTION (Interview Page)
-   ============================================ */
+     AUDIO QUESTION SECTION - COMPACT
+     ============================================ */
 
 .apple-audio-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-3);
 }
 
 .apple-audio-prompt {
   text-align: center;
-  padding: var(--space-4);
+  padding: var(--space-2);
 }
 
 .apple-audio-prompt__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
-  margin-bottom: var(--space-4);
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-2);
   background: linear-gradient(135deg, var(--accent-primary), #5856d6);
   border-radius: 50%;
   color: white;
 }
 
 .apple-audio-prompt__icon svg {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
 }
 
 .apple-audio-prompt__title {
-  font-size: var(--text-lg);
+  font-size: var(--text-base);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .apple-audio-prompt__subtitle {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--text-secondary);
-  max-width: 300px;
+  max-width: 260px;
   margin: 0 auto;
 }
 
-/* Recording Tips */
+/* Recording Tips - COMPACT */
 .apple-audio-tips {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .apple-audio-tip {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-xs);
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: 9px;
   color: var(--text-secondary);
   background: var(--bg-tertiary);
   border-radius: var(--radius-full);
 }
 
 .apple-audio-tip svg {
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   color: var(--success);
 }
 
-/* Submission Confirmation */
+/* Submission Confirmation - COMPACT */
 .apple-audio-complete {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-8);
+  gap: var(--space-3);
+  padding: var(--space-4);
   text-align: center;
+}
+
+.apple-audio-complete--processing {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
 }
 
 .apple-audio-complete__icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   background: var(--success-bg);
   border-radius: 50%;
   color: var(--success);
@@ -2456,9 +2396,11 @@
     transform: scale(0);
     opacity: 0;
   }
+
   50% {
     transform: scale(1.2);
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -2466,43 +2408,47 @@
 }
 
 .apple-audio-complete__icon svg {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
 }
 
 .apple-audio-complete__title {
-  font-size: var(--text-lg);
+  font-size: var(--text-base);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
 }
 
 .apple-audio-complete__duration {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--text-secondary);
 }
 
 .apple-audio-complete__actions {
   display: flex;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
+
+/* ============================================
+     QUESTION TITLE WRAPPER - COMPACT
+     ============================================ */
 
 .apple-question-title-wrapper {
   position: relative;
   width: 100%;
-  min-height: 200px;
-  margin-bottom: 2rem;
+  min-height: 100px;
+  max-height: 150px;
+  margin-bottom: var(--space-3);
   display: flex;
   justify-content: center;
   align-items: center;
-  
-  /* REMOVED the radial-gradient background */
-  background: transparent; 
+  background: transparent;
+  overflow: hidden;
 }
 
 .morph-container {
   width: 100% !important;
-  height: 300px !important;
+  height: 150px !important;
 }
 
 /* Accessibility helper */
@@ -2516,4 +2462,230 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* ============================================
+     CAMERA PREVIEW - COMPACT (if used in sidebar)
+     ============================================ */
+
+.apple-camera {
+  position: relative;
+  aspect-ratio: 4/3;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.apple-camera__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.apple-camera__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom,
+      transparent 60%,
+      rgba(0, 0, 0, 0.5));
+  pointer-events: none;
+}
+
+.apple-camera__rec {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  font-size: 9px;
+  font-weight: var(--font-medium);
+  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-sm);
+}
+
+.apple-camera__dot {
+  width: 5px;
+  height: 5px;
+  background: var(--error);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.apple-camera__label {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  font-size: 9px;
+  font-weight: var(--font-medium);
+  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-sm);
+}
+
+.apple-camera__label svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ============================================
+     MOBILE OPTIMIZATIONS - EXTRA COMPACT
+     ============================================ */
+
+@media (max-width: 480px) {
+  :root {
+    --nav-height: 40px;
+    --text-xs: 0.5625rem;
+    --text-sm: 0.6875rem;
+    --text-base: 0.75rem;
+    --text-lg: 0.875rem;
+    --space-3: 0.375rem;
+    --space-4: 0.5rem;
+    --space-5: 0.75rem;
+    --space-6: 1rem;
+  }
+
+  .apple-nav__camera {
+    width: 28px;
+    height: 28px;
+  }
+
+  .apple-progress {
+    max-width: 120px;
+  }
+
+  .apple-panel__scroll {
+    padding: var(--space-3);
+  }
+
+  .apple-question-title-wrapper {
+    min-height: 80px;
+    max-height: 120px;
+  }
+
+  .morph-container {
+    height: 120px !important;
+  }
+
+  .audio-visualizer--default {
+    min-height: 140px;
+    max-height: 180px;
+  }
+
+  .apple-audio-prompt__icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .apple-audio-prompt__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .apple-btn {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .apple-dots {
+    gap: 2px;
+  }
+
+  .apple-dot {
+    width: 5px;
+    height: 5px;
+  }
+}
+
+/* ============================================
+     TABLET LANDSCAPE - OPTIMAL LAYOUT
+     ============================================ */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .apple-content {
+    flex-direction: row;
+  }
+
+  .apple-panel--question {
+    flex: 2;
+  }
+
+  .apple-panel--sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 220px;
+    flex-shrink: 0;
+    background: transparent;
+    box-shadow: none;
+    gap: var(--space-2);
+  }
+}
+
+/* ============================================
+     LARGE DESKTOP - COMFORTABLE SPACING
+     ============================================ */
+
+@media (min-width: 1440px) {
+  :root {
+    --nav-height: 48px;
+    --sidebar-width: 280px;
+  }
+
+  .apple-panel__scroll {
+    padding: var(--space-6);
+  }
+
+  .apple-question-title-wrapper {
+    min-height: 120px;
+    max-height: 180px;
+  }
+
+  .morph-container {
+    height: 180px !important;
+  }
+}
+
+/* ============================================
+     PREVENT OVERFLOW GLOBALLY
+     ============================================ */
+
+.apple-interview *:not(.apple-panel__scroll):not(.question-list):not(.apple-console-body):not(.apple-sidebar__content):not(.apple-panel--sidebar) {
+  overflow: visible;
+}
+
+/* Force content to fit */
+.apple-panel--question,
+.apple-panel--editor {
+  min-height: 0;
+  max-height: 100%;
+}
+
+/* Ensure the main scrollable area is only the panel scroll */
+.apple-panel__scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbars on non-scrollable elements */
+.apple-interview::-webkit-scrollbar,
+.apple-main::-webkit-scrollbar,
+.apple-content::-webkit-scrollbar {
+  display: none;
+}
+
+.apple-interview,
+.apple-main,
+.apple-content {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

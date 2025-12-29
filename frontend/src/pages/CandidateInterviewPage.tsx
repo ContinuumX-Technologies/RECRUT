@@ -57,7 +57,6 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 // ============================================
 
 const Icons = {
-  // ... (keeping existing icons same for brevity)
   Logo: () => (
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" />
@@ -183,7 +182,6 @@ const Icons = {
   ),
 };
 
-// ... (LoadingScreen and ErrorScreen components remain the same)
 const LoadingScreen = () => (
   <div className="apple-loading">
     <div className="apple-loading__content">
@@ -255,8 +253,10 @@ export function CandidateInterviewPage() {
     memory?: string;
   } | null>(null);
   
-  // [NEW] Processing state for async question generation
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // [NEW] Track hidden questions to maintain pagination count
+  const [hiddenQuestionIds, setHiddenQuestionIds] = useState<Set<string>>(new Set());
 
   // ==========================================
   // REFS
@@ -267,7 +267,6 @@ export function CandidateInterviewPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const prevQuestionsRef = useRef<Question[]>([]);
   
-  // Refs to track follow-up flow
   const prevIndexRef = useRef<number>(currentIndex);
   const prevIdRef = useRef<string | undefined>(undefined);
 
@@ -284,7 +283,6 @@ export function CandidateInterviewPage() {
   const speakQuestion = useCallback((text: string) => {
     if (!window.speechSynthesis) return;
     
-    // Cancel any ongoing speech
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -355,7 +353,7 @@ export function CandidateInterviewPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // [NEW] Polling Mechanism: Wait for Follow-up Generation
+  // Polling Mechanism
   useEffect(() => {
     let pollTimer: number;
 
@@ -363,7 +361,7 @@ export function CandidateInterviewPage() {
       console.log("Waiting for follow-up generation (polling)...");
       pollTimer = window.setInterval(async () => {
          await fetchConfig(true);
-      }, 2000); // Poll every 2s
+      }, 2000);
     }
 
     return () => {
@@ -380,6 +378,8 @@ export function CandidateInterviewPage() {
     const prevQuestions = prevQuestionsRef.current;
 
     // 1. Detection: Question List Grew (New Question Inserted)
+    // This implies a follow-up was appended. We want to hide the previous (parent) question
+    // to keep the visual pagination count constant.
     if (currentQuestions.length > prevQuestions.length) {
       console.log("New questions detected. Checking for follow-up insertion...");
       const potentialNextIndex = currentIndex + 1;
@@ -388,9 +388,15 @@ export function CandidateInterviewPage() {
         const nextQuestion = currentQuestions[potentialNextIndex];
         const prevQuestionAtNextIndex = prevQuestions[potentialNextIndex];
 
+        // Heuristic: If we are inserting a question right after the current one
         if (!prevQuestionAtNextIndex || nextQuestion.id !== prevQuestionAtNextIndex.id) {
-           console.log("Follow-up question detected (Insertion). Auto-advancing...");
-           setIsProcessing(false); // Stop polling
+           console.log("Follow-up question detected (Insertion). Hiding parent and auto-advancing...");
+           
+           // [FIX] Hide the current (parent) question so pagination doesn't grow
+           const parentQuestionId = currentQuestions[currentIndex].id;
+           setHiddenQuestionIds(prev => new Set(prev).add(parentQuestionId));
+
+           setIsProcessing(false); 
            setCurrentIndex(potentialNextIndex);
            setTimeout(() => speakQuestion(nextQuestion.text), 500);
            prevQuestionsRef.current = currentQuestions; 
@@ -404,21 +410,18 @@ export function CandidateInterviewPage() {
 
         if (currentQ && prevQ && currentQ.id !== prevQ.id) {
             console.log("Follow-up question detected (Replacement). Updating UI...");
-            setIsProcessing(false); // Stop polling
-            // No index change needed, just ensure speech triggers
+            setIsProcessing(false);
             setTimeout(() => speakQuestion(currentQ.text), 500);
             prevQuestionsRef.current = currentQuestions;
         }
     }
   }, [config, currentIndex, speakQuestion]);
 
-  // Logic to reset "Answered" state if we are on the same index but the question ID changes
   const currentQuestionId = config?.questions[currentIndex]?.id;
 
   useEffect(() => {
     if (!currentQuestionId) return;
 
-    // Check if we stayed on the same index but the Question ID changed
     if (currentIndex === prevIndexRef.current && currentQuestionId !== prevIdRef.current) {
         console.log("Question ID changed at same index - Resetting answered status for follow-up");
         
@@ -431,10 +434,9 @@ export function CandidateInterviewPage() {
             return prev;
         });
         
-        // Clear old answer from state so text area/recorder is fresh
         setAnswers(prev => {
             const next = { ...prev };
-            delete next[currentQuestionId]; // Clear NEW id's answer if any
+            delete next[currentQuestionId];
             return next;
         });
     }
@@ -537,7 +539,6 @@ export function CandidateInterviewPage() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [currentIndex, showExitConfirm, config]);
 
-  // Prevent accidental navigation
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (setupComplete && !isSubmitting) {
@@ -567,7 +568,7 @@ export function CandidateInterviewPage() {
   }
 
   // ==========================================
-  // MEMOIZED VALUES - Fixed
+  // MEMOIZED VALUES - Fixed to Support Hidden Questions
   // ==========================================
 
   const questions = useMemo(() =>
@@ -575,20 +576,31 @@ export function CandidateInterviewPage() {
     [config?.questions]
   );
 
-  const totalQuestions = questions.length;
-
-  const currentQuestion = useMemo(() =>
-    questions[currentIndex],
-    [questions, currentIndex]
+  // [NEW] Visible Questions Filter
+  const visibleQuestions = useMemo(() => 
+    questions.filter(q => !hiddenQuestionIds.has(q.id)),
+    [questions, hiddenQuestionIds]
   );
 
+  // [NEW] Visual Index Calculation
+  // We need to map the 'real' currentIndex to the 'visual' index (0, 1, 2...)
+  const currentVisualIndex = useMemo(() => {
+    const currentQ = questions[currentIndex];
+    if (!currentQ) return 0;
+    return visibleQuestions.findIndex(q => q.id === currentQ.id);
+  }, [questions, currentIndex, visibleQuestions]);
+
+  const totalQuestions = visibleQuestions.length; // Use visible count for pagination
+  const currentQuestion = questions[currentIndex]; // Still use real question for content
+
   const progress = useMemo(() =>
-    totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0,
-    [totalQuestions, currentIndex]
+    totalQuestions > 0 ? ((currentVisualIndex + 1) / totalQuestions) * 100 : 0,
+    [totalQuestions, currentVisualIndex]
   );
 
   const isCodeQuestion = currentQuestion?.type === 'code';
-  const isLastQuestion = currentIndex >= totalQuestions - 1;
+  // Check if we are physically at the end of the visible list
+  const isLastQuestion = currentVisualIndex >= totalQuestions - 1;
 
   // ==========================================
   // HANDLERS
@@ -616,27 +628,39 @@ export function CandidateInterviewPage() {
   }, [currentQuestion, currentIndex]);
 
   const handleNext = useCallback(() => {
-    setCurrentIndex(prev => {
-      const nextIndex = prev + 1;
-      if (nextIndex >= totalQuestions) {
-        console.warn('Attempted to navigate past last question');
-        return prev;
-      }
-      return nextIndex;
-    });
-    setCodeOutput(null);
-  }, [totalQuestions]);
+    // We need to find the NEXT visible question
+    // If we are at index N (raw), and N is hidden, we keep going.
+    // But basic 'next' logic:
+    
+    // Find current question in visible list
+    if (currentVisualIndex === -1 || currentVisualIndex >= visibleQuestions.length - 1) {
+        console.warn('Attempted to navigate past last visible question');
+        return;
+    }
+
+    const nextVisibleQ = visibleQuestions[currentVisualIndex + 1];
+    const nextRawIndex = questions.findIndex(q => q.id === nextVisibleQ.id);
+
+    if (nextRawIndex !== -1) {
+        setCurrentIndex(nextRawIndex);
+        setCodeOutput(null);
+    }
+  }, [currentVisualIndex, visibleQuestions, questions]);
 
   const handlePrev = useCallback(() => {
-    setCurrentIndex(prev => {
-      if (prev <= 0) {
+    if (currentVisualIndex <= 0) {
         console.warn('Attempted to navigate before first question');
-        return prev;
-      }
-      return prev - 1;
-    });
-    setCodeOutput(null);
-  }, []);
+        return;
+    }
+
+    const prevVisibleQ = visibleQuestions[currentVisualIndex - 1];
+    const prevRawIndex = questions.findIndex(q => q.id === prevVisibleQ.id);
+
+    if (prevRawIndex !== -1) {
+        setCurrentIndex(prevRawIndex);
+        setCodeOutput(null);
+    }
+  }, [currentVisualIndex, visibleQuestions, questions]);
 
   const handleFinish = useCallback(() => {
     setShowExitConfirm(true);
@@ -700,15 +724,14 @@ export function CandidateInterviewPage() {
     }
   }, [interviewId, navigate, answers]);
 
-  const handleQuestionSelect = useCallback((index: number) => {
-    if (index < 0 || index >= totalQuestions) {
-      console.warn(`Invalid question index: ${index}, total: ${totalQuestions}`);
+  const handleQuestionSelect = useCallback((rawIndex: number) => {
+    if (rawIndex < 0 || rawIndex >= questions.length) {
       return;
     }
-    setCurrentIndex(index);
+    setCurrentIndex(rawIndex);
     setCodeOutput(null);
     setShowSidebar(false);
-  }, [totalQuestions]);
+  }, [questions.length]);
 
   const handleRunCode = useCallback(async () => {
     if (!currentQuestion || !answers[currentQuestion.id]) return;
@@ -760,14 +783,17 @@ export function CandidateInterviewPage() {
   };
 
   // ==========================================
-  // RENDER QUESTION LIST
+  // RENDER QUESTION LIST (SIDEBAR)
   // ==========================================
 
   const renderQuestionList = () => (
     <div className="question-list">
-      {questions.map((q, index) => {
-        const isCurrent = index === currentIndex;
-        const isAnswered = answeredQuestions.has(index);
+      {visibleQuestions.map((q, visIndex) => {
+        // Find the original index for this question
+        const rawIndex = questions.findIndex(rawQ => rawQ.id === q.id);
+        
+        const isCurrent = rawIndex === currentIndex;
+        const isAnswered = answeredQuestions.has(rawIndex);
 
         return (
           <button
@@ -775,9 +801,9 @@ export function CandidateInterviewPage() {
             className={`question-list__item ${isCurrent ? 'question-list__item--active' : ''
               } ${isAnswered ? 'question-list__item--answered' : ''
               }`}
-            onClick={() => handleQuestionSelect(index)}
+            onClick={() => handleQuestionSelect(rawIndex)}
           >
-            <span className="question-list__number">{index + 1}</span>
+            <span className="question-list__number">{visIndex + 1}</span>
             <span className="question-list__icon">{getQuestionTypeIcon(q.type)}</span>
             <span className="question-list__text">
               {q.text.length > 30 ? `${q.text.substring(0, 30)}...` : q.text}
@@ -876,7 +902,7 @@ export function CandidateInterviewPage() {
                   />
                 </div>
                 <span className="apple-progress__text">
-                  {currentIndex + 1} / {totalQuestions}
+                  {currentVisualIndex + 1} / {totalQuestions}
                 </span>
               </div>
             </div>
@@ -1045,7 +1071,7 @@ export function CandidateInterviewPage() {
                         <AudioVisualizerCard
                           key={currentQuestion?.id || `idx-${currentIndex}`}
                           variant="default"
-                          showControls={!isProcessing} // Disable controls while processing
+                          showControls={!isProcessing} 
                           accentColor="#0071e3"
                           interviewId={interviewId}
                           questionId={currentQuestion?.id}
@@ -1060,7 +1086,7 @@ export function CandidateInterviewPage() {
                           }}
                           onUploadComplete={() => {
                             console.log("Upload complete, initiating poll for follow-up...");
-                            setIsProcessing(true); // Start polling
+                            setIsProcessing(true); 
                           }}
                         />
 
@@ -1153,18 +1179,19 @@ export function CandidateInterviewPage() {
                 <nav className="apple-nav-controls">
                   <button
                     onClick={handlePrev}
-                    disabled={currentIndex === 0 || isProcessing}
+                    disabled={currentVisualIndex === 0 || isProcessing}
                     className="apple-btn apple-btn--secondary"
                   >
                     <Icons.ChevronLeft />
                     <span>Previous</span>
                   </button>
 
+                  {/* Dots Navigation - Uses Visual Index */}
                   <div className="apple-dots">
                     {(() => {
                       const maxVisible = 5;
                       const halfVisible = Math.floor(maxVisible / 2);
-                      let startIndex = Math.max(0, currentIndex - halfVisible);
+                      let startIndex = Math.max(0, currentVisualIndex - halfVisible);
                       let endIndex = Math.min(totalQuestions, startIndex + maxVisible);
 
                       if (endIndex - startIndex < maxVisible) {
@@ -1176,18 +1203,24 @@ export function CandidateInterviewPage() {
                         visibleIndices.push(i);
                       }
 
-                      return visibleIndices.map((questionIndex) => (
-                        <button
-                          key={`dot-${questionIndex}-${questions[questionIndex]?.id || questionIndex}`}
-                          className={`apple-dot ${questionIndex === currentIndex ? 'apple-dot--active' : ''
-                            } ${answeredQuestions.has(questionIndex) ? 'apple-dot--answered' : ''
-                            }`}
-                          onClick={() => !isProcessing && handleQuestionSelect(questionIndex)}
-                          aria-label={`Go to question ${questionIndex + 1}`}
-                          aria-current={questionIndex === currentIndex ? 'step' : undefined}
-                          disabled={isProcessing}
-                        />
-                      ));
+                      return visibleIndices.map((visualIdx) => {
+                         const q = visibleQuestions[visualIdx];
+                         const rawIdx = questions.findIndex(rawQ => rawQ.id === q.id);
+                         const isAnswered = answeredQuestions.has(rawIdx);
+
+                         return (
+                            <button
+                              key={`dot-${visualIdx}-${q.id}`}
+                              className={`apple-dot ${visualIdx === currentVisualIndex ? 'apple-dot--active' : ''
+                                } ${isAnswered ? 'apple-dot--answered' : ''
+                                }`}
+                              onClick={() => !isProcessing && handleQuestionSelect(rawIdx)}
+                              aria-label={`Go to question ${visualIdx + 1}`}
+                              aria-current={visualIdx === currentVisualIndex ? 'step' : undefined}
+                              disabled={isProcessing}
+                            />
+                         );
+                      });
                     })()}
                   </div>
 
