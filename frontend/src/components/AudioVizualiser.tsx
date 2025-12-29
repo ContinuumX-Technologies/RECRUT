@@ -8,14 +8,18 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 interface AudioVisualizerProps {
     onRecordingStart?: () => void;
     onRecordingStop?: (duration: number) => void;
-    onUploadComplete?: () => void; // New callback
+    onUploadComplete?: () => void;
     onAudioLevel?: (level: number) => void;
     isActive?: boolean;
     showControls?: boolean;
     variant?: 'default' | 'compact' | 'minimal';
     accentColor?: string;
-    interviewId?: string; // New prop
-    questionId?: string;  // New prop
+    interviewId?: string;
+    questionId?: string;
+    // New props for conversational mode
+    silenceDetection?: boolean;
+    silenceDurationMs?: number;
+    silenceThreshold?: number;
 }
 
 export default function AudioVisualizerCard({
@@ -28,7 +32,10 @@ export default function AudioVisualizerCard({
     variant = 'default',
     accentColor = '#0071e3',
     interviewId,
-    questionId
+    questionId,
+    silenceDetection = true, // Default enabled for conversational flow
+    silenceDurationMs = 2500, // ~2.5 seconds default
+    silenceThreshold = 0.05 // Slightly higher to avoid background noise triggering "speech"
 }: AudioVisualizerProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [isRecording, setIsRecording] = useState(false);
@@ -45,6 +52,11 @@ export default function AudioVisualizerCard({
     const streamRef = useRef<MediaStream | null>(null);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const animationRef = useRef<number | null>(null);
+
+    // Silence Detection Refs
+    const lastAudioDetectedRef = useRef<number>(0);
+    const speechStartedRef = useRef<boolean>(false);
+    const processingSilenceRef = useRef<boolean>(false);
 
     // MediaRecorder Refs
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -139,6 +151,11 @@ export default function AudioVisualizerCard({
         setIsRecording(true);
         setIsPaused(false);
         setDuration(0);
+        
+        // Reset silence detection
+        speechStartedRef.current = false;
+        processingSilenceRef.current = false;
+        lastAudioDetectedRef.current = Date.now();
 
         // 1. Start MediaRecorder
         let mimeType = 'audio/webm';
@@ -173,6 +190,9 @@ export default function AudioVisualizerCard({
 
     // Stop recording
     const stopRecording = useCallback(() => {
+        // Prevent double stopping
+        if (processingSilenceRef.current && !isRecording) return;
+        
         setIsRecording(false);
         setIsPaused(false);
 
@@ -186,7 +206,7 @@ export default function AudioVisualizerCard({
         }
 
         onRecordingStop?.(duration);
-    }, [duration, onRecordingStop]);
+    }, [duration, onRecordingStop, isRecording]);
 
     // Pause/Resume recording
     const togglePause = useCallback(() => {
@@ -196,6 +216,8 @@ export default function AudioVisualizerCard({
                 setDuration(prev => prev + 1);
             }, 1000);
             mediaRecorderRef.current?.resume();
+            // Reset silence timer on resume
+            lastAudioDetectedRef.current = Date.now();
         } else {
             // Pause
             if (timerRef.current) {
@@ -216,7 +238,27 @@ export default function AudioVisualizerCard({
         }
     }, [isActive]);
 
-    // Three.js visualization (Unchanged logic)
+    // Monitor for Silence (Conversational Mode)
+    useEffect(() => {
+        if (!isRecording || isPaused || !silenceDetection || processingSilenceRef.current) return;
+
+        const interval = setInterval(() => {
+            // Only check if user has actually started speaking
+            if (speechStartedRef.current) {
+                const timeSinceAudio = Date.now() - lastAudioDetectedRef.current;
+                
+                if (timeSinceAudio > silenceDurationMs) {
+                    console.log(`Silence detected (${timeSinceAudio}ms), auto-submitting...`);
+                    processingSilenceRef.current = true;
+                    stopRecording();
+                }
+            }
+        }, 200); // Check 5 times a second
+
+        return () => clearInterval(interval);
+    }, [isRecording, isPaused, silenceDetection, silenceDurationMs, stopRecording]);
+
+    // Three.js visualization (Unchanged logic + Audio Level Detection)
     useEffect(() => {
         if (!containerRef.current || !permissionGranted) return;
 
@@ -302,6 +344,17 @@ export default function AudioVisualizerCard({
             let bass = 0;
             for (let i = 0; i < 50; i++) bass += freqData[i];
             bass = bass / 50 / 255;
+            
+            // Audio Level Tracking for Silence Detection
+            setAudioLevel(bass); // Update state for UI
+            
+            if (bass > silenceThreshold) {
+                lastAudioDetectedRef.current = Date.now();
+                if (!speechStartedRef.current) {
+                    speechStartedRef.current = true;
+                }
+            }
+
             material.uniforms.uTime.value += 0.01;
             const current = material.uniforms.uBass.value;
             const speed = bass > current ? 0.8 : 4; // attack / release
@@ -325,7 +378,7 @@ export default function AudioVisualizerCard({
             if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
             audioCtx.close();
         };
-    }, [permissionGranted, onAudioLevel]);
+    }, [permissionGranted, onAudioLevel, silenceThreshold]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -379,7 +432,9 @@ export default function AudioVisualizerCard({
                 <div className="audio-visualizer__status">
                     <div className={`audio-visualizer__indicator ${isRecording && !isPaused ? 'audio-visualizer__indicator--recording' : ''}`}>
                         <span className="audio-visualizer__dot" />
-                        <span className="audio-visualizer__label">{isRecording ? (isPaused ? 'Paused' : 'Recording') : 'Ready'}</span>
+                        <span className="audio-visualizer__label">
+                            {isRecording ? (isPaused ? 'Paused' : (speechStartedRef.current ? 'Listening...' : 'Speak now...')) : 'Ready'}
+                        </span>
                     </div>
                     <div className="audio-visualizer__timer">{formatDuration(duration)}</div>
                 </div>

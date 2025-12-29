@@ -267,6 +267,7 @@ export function CandidateInterviewPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const mobileVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const prevQuestionsRef = useRef<Question[]>([]);
 
   // ==========================================
   // HOOKS
@@ -277,6 +278,28 @@ export function CandidateInterviewPage() {
 
   // Add this state near other state declarations
   const [configLoaded, setConfigLoaded] = useState(false);
+
+  // Text-to-Speech Helper
+  const speakQuestion = useCallback((text: string) => {
+    if (!window.speechSynthesis) return;
+    
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    // Optional: Adjust rate/pitch for a more natural feel
+    utterance.rate = 1.0; 
+    utterance.pitch = 1.0;
+    
+    // Select a preferred voice if available (e.g., Google US English)
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice => 
+      voice.name.includes('Google US English') || voice.name.includes('Samantha')
+    );
+    if (preferredVoice) utterance.voice = preferredVoice;
+
+    window.speechSynthesis.speak(utterance);
+  }, []);
 
   // [FIX 1] Updated fetchConfig to accept a "force" parameter
   const fetchConfig = useCallback(async (force = false) => {
@@ -304,11 +327,17 @@ export function CandidateInterviewPage() {
       }
 
       const data = await res.json();
+      const newQuestions = Array.isArray(data.questions) ? data.questions : [];
 
       // [FIX 2] Update config regardless of initial load state if forced
-      setConfig({
-        ...data,
-        questions: Array.isArray(data.questions) ? data.questions : [],
+      setConfig(prevConfig => {
+        if (prevConfig) {
+          prevQuestionsRef.current = prevConfig.questions;
+        }
+        return {
+          ...data,
+          questions: newQuestions,
+        };
       });
       setConfigLoaded(true);
 
@@ -329,6 +358,40 @@ export function CandidateInterviewPage() {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Detect follow-up questions and auto-advance + read aloud
+  useEffect(() => {
+    if (!config || prevQuestionsRef.current.length === 0) return;
+
+    const currentQuestions = config.questions;
+    const prevQuestions = prevQuestionsRef.current;
+
+    if (currentQuestions.length > prevQuestions.length) {
+      console.log("New questions detected. Checking for follow-up insertion...");
+      
+      const potentialNextIndex = currentIndex + 1;
+      
+      if (potentialNextIndex < currentQuestions.length) {
+        const nextQuestion = currentQuestions[potentialNextIndex];
+        const prevQuestionAtNextIndex = prevQuestions[potentialNextIndex];
+
+        // If the question at the next index is different (ID check) or wasn't there
+        if (!prevQuestionAtNextIndex || nextQuestion.id !== prevQuestionAtNextIndex.id) {
+           console.log("Follow-up question detected. Auto-advancing...");
+           
+           setCurrentIndex(potentialNextIndex);
+           
+           // Small delay to allow UI to settle before speaking
+           setTimeout(() => {
+             speakQuestion(nextQuestion.text);
+           }, 500);
+           
+           // Sync ref to prevent double trigger
+           prevQuestionsRef.current = currentQuestions; 
+        }
+      }
+    }
+  }, [config, currentIndex, speakQuestion]);
 
   // Camera initialization
   useEffect(() => {
@@ -936,13 +999,17 @@ export function CandidateInterviewPage() {
                           </div>
                         </div>
 
-                        {/* [FIX 3] Updated AudioVisualizerCard with Upload/Refresh Logic */}
+                        {/* [FIX 3] Updated AudioVisualizerCard with Upload/Refresh Logic AND Explicit Silence Props */}
                         <AudioVisualizerCard
                           variant="default"
                           showControls={true}
                           accentColor="#0071e3"
                           interviewId={interviewId}
                           questionId={currentQuestion?.id}
+                          // Explicitly set silence detection params for "conversational" feel (2.5s)
+                          silenceDetection={true}
+                          silenceDurationMs={2500}
+                          silenceThreshold={0.05}
                           onRecordingStart={() => console.log('Recording started')}
                           onRecordingStop={(duration) => {
                             console.log('Recording stopped locally, duration:', duration);
