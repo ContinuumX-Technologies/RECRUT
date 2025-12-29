@@ -438,7 +438,7 @@ export function CandidateInterviewPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [setupComplete, isSubmitting]);
 
-  
+
 
   async function apiFetch<T>(url: string, body: any): Promise<T> {
     const res = await fetch(url, {
@@ -485,9 +485,11 @@ export function CandidateInterviewPage() {
   const handleAnswerChange = useCallback((value: string) => {
     if (!currentQuestion) return;
 
+    const qId = currentQuestion.id || `q-${currentIndex}`;
+
     setAnswers(prev => ({
       ...prev,
-      [currentQuestion.id]: value
+      [qId]: value
     }));
 
     if (value.trim().length > 0) {
@@ -530,10 +532,10 @@ export function CandidateInterviewPage() {
 
   const handleSubmit = async () => {
     if (!currentQuestion || !answers[currentQuestion.id]) return;
-  
+
     setConsoleTab("result");
     setCodeOutput(null);
-  
+
     try {
       const res = await apiFetch<{
         status: "Accepted" | "Wrong Answer";
@@ -545,14 +547,14 @@ export function CandidateInterviewPage() {
         language: currentQuestion.language || "javascript",
         code: answers[currentQuestion.id]
       });
-  
+
       setCodeOutput({
         success: res.status === "Accepted",
         output: res.status,
         runtime: res.timeMs ? `${res.timeMs} ms` : undefined,
         memory: res.memoryMb ? `${res.memoryMb} MB` : undefined
       });
-  
+
       if (res.status === "Accepted") {
         setAnsweredQuestions(prev => new Set(prev).add(currentIndex));
       }
@@ -561,7 +563,7 @@ export function CandidateInterviewPage() {
     }
   };
 
-  
+
   const confirmFinish = useCallback(async () => {
     setIsSubmitting(true);
 
@@ -598,10 +600,10 @@ export function CandidateInterviewPage() {
 
   const handleRunCode = useCallback(async () => {
     if (!currentQuestion || !answers[currentQuestion.id]) return;
-  
+
     setConsoleTab("result");
     setCodeOutput(null);
-  
+
     try {
       // AUTOMATIC INPUT INJECTION:
       // We wrap the user's code with a driver that injects the test case data
@@ -612,15 +614,15 @@ export function CandidateInterviewPage() {
         language: currentQuestion.language || "javascript",
         testCases: currentQuestion.testCases || []
       });
-  
+
       const failed = res.testResults.find(t => !t.passed);
       setCodeOutput({
         success: !failed,
-        output: failed 
+        output: failed
           ? `Input: ${failed.input}\nExpected: ${failed.expected}\nGot: ${failed.actual}`
           : "All test cases passed!",
-        runtime: res.testResults.length > 0 
-          ? `${Math.max(...res.testResults.map(t => t.timeMs || 0))} ms` 
+        runtime: res.testResults.length > 0
+          ? `${Math.max(...res.testResults.map(t => t.timeMs || 0))} ms`
           : "0 ms"
       });
     } catch (err: any) {
@@ -681,18 +683,25 @@ export function CandidateInterviewPage() {
     </div>
   );
 
-  // Effect to preload starter code when question changes
-useEffect(() => {
-  if (currentQuestion && !answers[currentQuestion.id]) {
-    const starter = currentQuestion.starterCode && typeof currentQuestion.starterCode === 'object'
-      ? currentQuestion.starterCode[currentQuestion.language || 'javascript'] || ''
-      : '';
-    setAnswers(prev => ({
-      ...prev,
-      [currentQuestion.id]: starter
-    }));
-  }
-}, [currentQuestion, answers]);
+  // Optimized effect to preload starter code when question changes
+  useEffect(() => {
+    // Only proceed if we have a coding question and no answer has been stored for it yet
+    if (currentQuestion?.type === 'code' && answers[currentQuestion.id] === undefined) {
+      const lang = currentQuestion.language || 'javascript';
+
+      // Safely extract starter code
+      let starter = '';
+      if (currentQuestion.starterCode && typeof currentQuestion.starterCode === 'object') {
+        starter = currentQuestion.starterCode[lang] || '';
+      }
+
+      // Initialize the answer state for this question with the starter code
+      setAnswers(prev => ({
+        ...prev,
+        [currentQuestion.id]: starter
+      }));
+    }
+  }, [currentQuestion?.id, currentQuestion?.type]); // Only re-run when the question itself changes
 
   // ==========================================
   // RENDER CONDITIONS
@@ -1120,7 +1129,8 @@ useEffect(() => {
                     questionId={currentQuestion?.id || ''}
                     language={currentQuestion?.language || 'javascript'}
                     testCases={currentQuestion?.testCases || []}
-                    value={answers[currentQuestion?.id || ''] ?? ''}
+                    // Ensure we fall back to an empty string if nothing is found
+                    value={answers[currentQuestion?.id] ?? ''}
                     onChange={handleAnswerChange}
                   />
                 </div>
