@@ -14,6 +14,7 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const particlesRef = useRef<THREE.Points | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const timelineRef = useRef<gsap.core.Timeline | null>(null);
   
   const isSphereRef = useRef<boolean>(true);
   
@@ -50,14 +51,14 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
     for (let i = 0; i < particleCount; i++) {
         const phi = Math.acos(-1 + (2 * i) / particleCount);
         const theta = Math.sqrt(particleCount * Math.PI) * phi;
-        const r = 10; // Sphere radius stays 10
+        const r = 10;
         
         positions[i * 3] = r * Math.cos(theta) * Math.sin(phi) + (Math.random() - 0.5);
         positions[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi) + (Math.random() - 0.5);
         positions[i * 3 + 2] = r * Math.cos(phi) + (Math.random() - 0.5);
 
         const color = new THREE.Color();
-        color.setHSL(0, 0, 0.1 + Math.random() * 0.2);
+        color.setHSL(0, 0, 0.1 + Math.random() * 0.2); // Dark grey/black
         
         colors[i * 3] = color.r;
         colors[i * 3 + 1] = color.g;
@@ -82,33 +83,57 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
 
     // --- 3. ANIMATION LOOP ---
     const animate = () => {
+      // Safety check: Stop if refs are null (component unmounted)
+      if (!sceneRef.current || !cameraRef.current || !rendererRef.current) return;
+
       animationFrameRef.current = requestAnimationFrame(animate);
+      
       if (particlesRef.current && isSphereRef.current) {
         particlesRef.current.rotation.y += 0.002;
       }
-      renderer.render(scene, camera);
+      
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
     };
     animate();
 
-    // --- 4. RESIZE HANDLER ---
+    // --- 4. ROBUST RESIZE HANDLER (ResizeObserver) ---
+    // This handles layout shifts (like when "Response Saved" appears) automatically
     const handleResize = () => {
-      if (!container || !camera || !renderer) return;
+      if (!container || !cameraRef.current || !rendererRef.current) return;
       const w = container.clientWidth;
       const h = container.clientHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-    window.addEventListener('resize', handleResize);
+      if (w === 0 || h === 0) return; // Prevent 0-size errors
 
+      cameraRef.current.aspect = w / h;
+      cameraRef.current.updateProjectionMatrix();
+      rendererRef.current.setSize(w, h);
+    };
+
+    const resizeObserver = new ResizeObserver(() => handleResize());
+    resizeObserver.observe(container);
+
+    // --- CLEANUP ---
     return () => {
-      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      
+      // IMPORTANT: Kill any running GSAP animations to prevent crash
+      if (timelineRef.current) timelineRef.current.kill();
+
       if (renderer.domElement && container) {
         container.removeChild(renderer.domElement);
       }
+      
+      // Dispose resources
       geometry.dispose();
       material.dispose();
+      renderer.dispose();
+      
+      // Nullify refs to prevent loop from running
+      sceneRef.current = null;
+      cameraRef.current = null;
+      rendererRef.current = null;
+      particlesRef.current = null;
     };
   }, []);
 
@@ -116,7 +141,7 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
   useEffect(() => {
     if (!particlesRef.current || !text) return;
 
-    // A. Helper: Generate Points from Text
+    // Helper: Generate Points from Text
     const getTargetPoints = (str: string) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -167,16 +192,12 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
                 const posX = (i / 4) % canvas.width;
                 const posY = Math.floor((i / 4) / canvas.width);
                 points.push({
-                    // --- CHANGED SCALING HERE ---
-                    // Changed from 25 to 14. 
-                    // Lower number = Larger Text in 3D world.
-                    x: (posX - canvas.width / 2) / 10,
+                    x: (posX - canvas.width / 2) / 10, // Scaling factor (Lower = Bigger Text)
                     y: -(posY - canvas.height / 2) / 10
                 });
             }
         }
 
-        // Force Centering
         if (points.length > 0) {
           let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
           points.forEach(p => {
@@ -196,22 +217,20 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
         return points;
     };
 
-    // B. ANIMATION SEQUENCE
+    // Calculate Targets
     const geometry = particlesRef.current.geometry;
     const currentPositions = geometry.attributes.position.array as Float32Array;
     
-    // 1. Calculate Sphere Targets
     const spherePositions = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount; i++) {
         const phi = Math.acos(-1 + (2 * i) / particleCount);
         const theta = Math.sqrt(particleCount * Math.PI) * phi;
-        const r = 10; // Sphere radius maintained at 10
+        const r = 10; 
         spherePositions[i * 3] = r * Math.cos(theta) * Math.sin(phi);
         spherePositions[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi);
         spherePositions[i * 3 + 2] = r * Math.cos(phi);
     }
 
-    // 2. Calculate Text Targets
     const textPoints = getTargetPoints(text);
     const textPositions = new Float32Array(particleCount * 3);
     
@@ -234,12 +253,19 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
         }
     }
 
-    // C. Execute Timeline
+    // --- ANIMATION EXECUTION ---
+    // Kill previous timeline if it exists to avoid conflicts
+    if (timelineRef.current) {
+        timelineRef.current.kill();
+    }
+
     const tl = gsap.timeline();
+    timelineRef.current = tl; // Store ref
+    
     const dummy = { val: 0 };
     const startPosCopy = Float32Array.from(currentPositions);
 
-    // Step 1: Start spinning and Morph to Sphere
+    // 1. Morph to Sphere
     tl.add(() => { isSphereRef.current = true; }); 
     
     tl.to(dummy, {
@@ -255,21 +281,19 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
         }
     });
 
-    // Step 2: Brief pause (spinning sphere)
+    // 2. Pause
     tl.to({}, { duration: 0.2 });
 
-    // Step 3: Stop Rotation, Align to Center, Morph to Text
+    // 3. Morph to Text
     tl.add(() => { 
         isSphereRef.current = false; 
-        
-        // Reset rotation to exactly 0,0,0
-        gsap.to(particlesRef.current!.rotation, {
-            x: 0, 
-            y: 0, 
-            z: 0, 
-            duration: 0.8,
-            ease: "power2.out"
-        });
+        if (particlesRef.current) {
+            gsap.to(particlesRef.current.rotation, {
+                x: 0, y: 0, z: 0, 
+                duration: 0.8,
+                ease: "power2.out"
+            });
+        }
     });
 
     tl.to(dummy, { 
