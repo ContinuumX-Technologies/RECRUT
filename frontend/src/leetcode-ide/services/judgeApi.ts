@@ -37,6 +37,7 @@ export const runCode = (payload: {
   axios.post<RunResult>(`${API_BASE}/api/judge/run`, payload);
 
 export const submitCode = (payload: {
+  interviewId: string; // Added
   questionId: string;
   language: string;
   code: string;

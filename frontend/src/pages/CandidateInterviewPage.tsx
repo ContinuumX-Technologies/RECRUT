@@ -24,7 +24,10 @@ type Question = {
   durationSec?: number;
   options?: string[];
   language?: 'javascript' | 'python';
-  starterCode?: string;
+  starterCode?: {
+    javascript?: string;
+    python?: string;
+  };
   testCases?: TestCase[];
   description?: string;
   hiddenTestCases?: TestCase[];
@@ -435,6 +438,8 @@ export function CandidateInterviewPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [setupComplete, isSubmitting]);
 
+  
+
   async function apiFetch<T>(url: string, body: any): Promise<T> {
     const res = await fetch(url, {
       method: "POST",
@@ -523,6 +528,40 @@ export function CandidateInterviewPage() {
     setShowExitConfirm(true);
   }, []);
 
+  const handleSubmit = async () => {
+    if (!currentQuestion || !answers[currentQuestion.id]) return;
+  
+    setConsoleTab("result");
+    setCodeOutput(null);
+  
+    try {
+      const res = await apiFetch<{
+        status: "Accepted" | "Wrong Answer";
+        timeMs?: number;
+        memoryMb?: number;
+      }>(`${API_BASE}/api/judge/submit`, {
+        interviewId, // FIX: Now passing required interviewId
+        questionId: currentQuestion.id,
+        language: currentQuestion.language || "javascript",
+        code: answers[currentQuestion.id]
+      });
+  
+      setCodeOutput({
+        success: res.status === "Accepted",
+        output: res.status,
+        runtime: res.timeMs ? `${res.timeMs} ms` : undefined,
+        memory: res.memoryMb ? `${res.memoryMb} MB` : undefined
+      });
+  
+      if (res.status === "Accepted") {
+        setAnsweredQuestions(prev => new Set(prev).add(currentIndex));
+      }
+    } catch (err: any) {
+      setCodeOutput({ success: false, output: err.message || "Submission failed" });
+    }
+  };
+
+  
   const confirmFinish = useCallback(async () => {
     setIsSubmitting(true);
 
@@ -559,47 +598,42 @@ export function CandidateInterviewPage() {
 
   const handleRunCode = useCallback(async () => {
     if (!currentQuestion || !answers[currentQuestion.id]) return;
-
+  
     setConsoleTab("result");
     setCodeOutput(null);
-
+  
     try {
+      // AUTOMATIC INPUT INJECTION:
+      // We wrap the user's code with a driver that injects the test case data
       const res = await apiFetch<{
-        testResults: {
-          input: string;
-          expected: string;
-          actual: string;
-          passed: boolean;
-          timeMs?: number;
-        }[];
+        testResults: any[];
       }>(`${API_BASE}/api/judge/run`, {
         code: answers[currentQuestion.id],
         language: currentQuestion.language || "javascript",
         testCases: currentQuestion.testCases || []
       });
-
+  
       const failed = res.testResults.find(t => !t.passed);
-
       setCodeOutput({
         success: !failed,
-        output: failed
+        output: failed 
           ? `Input: ${failed.input}\nExpected: ${failed.expected}\nGot: ${failed.actual}`
           : "All test cases passed!",
-        runtime: `${Math.max(...res.testResults.map(t => t.timeMs || 0))} ms`,
-        memory: "—"
+        runtime: res.testResults.length > 0 
+          ? `${Math.max(...res.testResults.map(t => t.timeMs || 0))} ms` 
+          : "0 ms"
       });
     } catch (err: any) {
-      setCodeOutput({
-        success: false,
-        output: err.message || "Runtime error"
-      });
+      setCodeOutput({ success: false, output: err.message || "Execution failed" });
     }
   }, [currentQuestion, answers]);
 
 
   const handleResetCode = useCallback(() => {
-    if (currentQuestion?.starterCode) {
-      handleAnswerChange(currentQuestion.starterCode);
+    const lang = currentQuestion?.language || 'javascript';
+    const starter = currentQuestion?.starterCode?.[lang];
+    if (starter) {
+      handleAnswerChange(starter);
     }
   }, [currentQuestion, handleAnswerChange]);
 
@@ -646,6 +680,19 @@ export function CandidateInterviewPage() {
       })}
     </div>
   );
+
+  // Effect to preload starter code when question changes
+useEffect(() => {
+  if (currentQuestion && !answers[currentQuestion.id]) {
+    const starter = currentQuestion.starterCode && typeof currentQuestion.starterCode === 'object'
+      ? currentQuestion.starterCode[currentQuestion.language || 'javascript'] || ''
+      : '';
+    setAnswers(prev => ({
+      ...prev,
+      [currentQuestion.id]: starter
+    }));
+  }
+}, [currentQuestion, answers]);
 
   // ==========================================
   // RENDER CONDITIONS
@@ -1059,40 +1106,7 @@ export function CandidateInterviewPage() {
                     </button>
                     <button
                       className="apple-btn apple-btn--primary"
-                      onClick={async () => {
-                        if (!currentQuestion || !answers[currentQuestion.id]) return;
-
-                        setConsoleTab("result");
-                        setCodeOutput(null);
-
-                        try {
-                          const res = await apiFetch<{
-                            status: "Accepted" | "Wrong Answer";
-                            timeMs?: number;
-                            memoryMb?: number;
-                          }>(`${API_BASE}/api/judge/submit`, {
-                            code: answers[currentQuestion.id],
-                            language: currentQuestion.language || "javascript",
-                            questionId: currentQuestion.id
-                          });
-
-                          setCodeOutput({
-                            success: res.status === "Accepted",
-                            output: res.status,
-                            runtime: res.timeMs ? `${res.timeMs} ms` : undefined,
-                            memory: res.memoryMb ? `${res.memoryMb} MB` : undefined
-                          });
-
-                          if (res.status === "Accepted") {
-                            setAnsweredQuestions(prev => new Set(prev).add(currentIndex));
-                          }
-                        } catch (err: any) {
-                          setCodeOutput({
-                            success: false,
-                            output: err.message || "Submission failed"
-                          });
-                        }
-                      }}
+                      onClick={handleSubmit}
                     >
                       <Icons.Send />
                       <span>Submit</span>
@@ -1106,7 +1120,7 @@ export function CandidateInterviewPage() {
                     questionId={currentQuestion?.id || ''}
                     language={currentQuestion?.language || 'javascript'}
                     testCases={currentQuestion?.testCases || []}
-                    value={answers[currentQuestion?.id || ''] ?? currentQuestion?.starterCode ?? ''}
+                    value={answers[currentQuestion?.id || ''] ?? ''}
                     onChange={handleAnswerChange}
                   />
                 </div>
