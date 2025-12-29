@@ -24,6 +24,7 @@
     "multer": "^2.0.2",
     "openai": "^6.15.0",
     "python-shell": "^5.0.0",
+    "uuid": "^13.0.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {

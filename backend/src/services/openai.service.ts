@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { v4 as uuidv4 } from "uuid"; // [ADD]: Import UUID generator
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
@@ -45,7 +46,6 @@ export async function generateAIQuestion(input: {
     }
     `;
 
-
     const response = await openai.chat.completions.create({
         model: "gpt-4o-mini", // Corrected model name
         messages: [{ role: "user", content: prompt }],
@@ -56,7 +56,7 @@ export async function generateAIQuestion(input: {
     const raw = response.choices[0]?.message?.content;
 
     console.log("🤖 AI RAW RESPONSE:", raw);
-    
+
     if (!raw) {
         throw new Error("OpenAI returned empty response");
     }
@@ -69,6 +69,9 @@ export async function generateAIQuestion(input: {
 
     try {
         const parsed = JSON.parse(cleaned);
+        // [FIX]: Overwrite placeholder with a real unique UUID
+        parsed.id = uuidv4();
+        console.log("✅ AI PARSED OUTPUT:", parsed);
         return parsed;
     } catch (err) {
         console.error("❌ AI RAW OUTPUT:", raw);
