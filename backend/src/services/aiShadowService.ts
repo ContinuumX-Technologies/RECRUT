@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { generateContextAwareCodingQuestion } from './openai.service'; // [UPDATED] Import the coding question generator
 
 const execAsync = promisify(exec);
 
@@ -265,7 +266,8 @@ export class AIShadowService {
 
       // 4. Follow-up
       if (analysis.followUpQuestion) {
-        await this.addFollowUpQuestion(interviewId, analysis.followUpQuestion);
+        // [UPDATED] Pass transcript to allow coding question generation
+        await this.addFollowUpQuestion(interviewId, analysis.followUpQuestion, analysis.transcript);
       }
 
       // 5. Summary
@@ -278,7 +280,8 @@ export class AIShadowService {
     }
   }
 
-  private static async addFollowUpQuestion(interviewId: string, text: string) {
+  // [UPDATED] addFollowUpQuestion with Coding Challenge Logic
+  private static async addFollowUpQuestion(interviewId: string, text: string, transcriptForContext?: string) {
     const interview = await prisma.interview.findUnique({ 
         where: { id: interviewId },
         include: { template: true }
@@ -294,15 +297,47 @@ export class AIShadowService {
     const questions = Array.isArray(activeConfig.questions) ? activeConfig.questions : [];
 
     // Limit follow-ups to 3
-    const followUpCount = questions.filter((q: any) => q.id.startsWith('ai-followup')).length;
+    const followUpCount = questions.filter((q: any) => q.id.startsWith('ai-followup') || q.id.startsWith('ai-code')).length;
     if (followUpCount >= 3) return;
 
-    const newQuestion = {
-      id: `ai-followup-${Date.now()}`,
-      text: `(Follow-up) ${text}`,
-      type: 'audio', // <--- [CRITICAL FIX] Changed from 'text' to 'audio'
-      durationSec: 60
-    };
+    // [NEW] DECISION LOGIC: 
+    // If the follow-up text explicitly asks to "write code" or "implement", 
+    // generate a coding challenge.
+    const requiresCoding = text.toLowerCase().includes("implement") || text.toLowerCase().includes("write code") || text.toLowerCase().includes("coding problem");
+
+    let newQuestion;
+
+    if (requiresCoding && transcriptForContext) {
+         try {
+             // 1. Generate the Code Question
+             const codeQuestionRaw = await generateContextAwareCodingQuestion(transcriptForContext);
+             
+             // 2. Format it for the config
+             newQuestion = {
+                 ...codeQuestionRaw, // Spread the AI generated fields (starterCode, testCases, etc)
+                 id: `ai-code-${Date.now()}`,
+                 // Ensure type is 'code' so the frontend renders the IDE
+                 type: 'code' 
+             };
+         } catch (error) {
+             console.error("[AIShadow] Failed to generate coding question, falling back to audio:", error);
+             // Fallback to standard audio question
+             newQuestion = {
+                id: `ai-followup-${Date.now()}`,
+                text: `(Follow-up) ${text}`,
+                type: 'audio', 
+                durationSec: 60
+             };
+         }
+    } else {
+         // Standard Audio/Text Follow-up
+         newQuestion = {
+            id: `ai-followup-${Date.now()}`,
+            text: `(Follow-up) ${text}`,
+            type: 'audio', 
+            durationSec: 60
+         };
+    }
 
     activeConfig.questions = [...questions, newQuestion];
 
