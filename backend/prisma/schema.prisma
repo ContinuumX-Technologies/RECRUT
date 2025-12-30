@@ -54,6 +54,9 @@ model Interview {
   // ADD THIS FIELD:
   customConfig   Json?    // Stores specific questions/settings for this interview
 
+  // [NEW] Stores parsed resume (Skills, Experience, Projects)
+  resumeData     Json?
+
   interviewerId  String?
   interviewer    User?    @relation("InterviewerUser", fields: [interviewerId], references: [id])
   

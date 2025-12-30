@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './CandidateDashboardPage.css';
@@ -18,6 +18,8 @@ type CandidateInterview = {
     role: string;
     level: string;
   } | null;
+  // Optional: If you update backend to return this flag, you can conditionally show "Update" vs "Upload"
+  hasResume?: boolean; 
 };
 
 // ============================================
@@ -108,6 +110,13 @@ const Icons = {
       <polyline points="10,9 9,9 8,9"/>
     </svg>
   ),
+  Upload: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+  ),
 };
 
 // ============================================
@@ -191,10 +200,68 @@ const EmptyState = () => (
 // ============================================
 
 const InterviewCard = ({ interview }: { interview: CandidateInterview }) => {
+  const { token } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [statusMsg, setStatusMsg] = useState('');
+
   const isJoinable = interview.status === 'scheduled' || interview.status === 'ongoing';
   const scheduledDate = interview.scheduledAt ? new Date(interview.scheduledAt) : null;
   const isToday = scheduledDate && new Date().toDateString() === scheduledDate.toDateString();
   const isPast = scheduledDate && scheduledDate < new Date();
+
+  // Handle Resume Upload
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    setUploading(true);
+    setUploadStatus('idle');
+    setStatusMsg('');
+
+    const formData = new FormData();
+    formData.append('resume', file);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/interviews/${interview.id}/resume`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      setUploadStatus('success');
+      setStatusMsg('Resume uploaded!');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setUploadStatus('idle');
+        setStatusMsg('');
+      }, 3000);
+
+    } catch (err: any) {
+      console.error(err);
+      setUploadStatus('error');
+      setStatusMsg(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      // Reset input so same file can be selected again if needed
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const triggerUpload = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <div className={`candidate-card ${isToday ? 'candidate-card--today' : ''}`}>
@@ -276,23 +343,59 @@ const InterviewCard = ({ interview }: { interview: CandidateInterview }) => {
         )}
       </div>
 
+      {/* Upload Status Message */}
+      {statusMsg && (
+        <div className={`candidate-card__alert candidate-card__alert--${uploadStatus}`}>
+          {uploadStatus === 'success' ? <Icons.CheckCircle /> : <Icons.AlertCircle />}
+          <span>{statusMsg}</span>
+        </div>
+      )}
+
       <div className="candidate-card__footer">
         <span className="candidate-card__id">
           ID: {interview.id.slice(0, 8)}...
         </span>
+        
+        <div className="candidate-card__actions">
+          {/* Resume Upload Button (Visible for scheduled/ongoing) */}
+          {isJoinable && (
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept=".pdf"
+                onChange={handleFileChange}
+              />
+              <button 
+                className="candidate-btn candidate-btn--secondary"
+                onClick={triggerUpload}
+                disabled={uploading}
+                title="Upload PDF Resume"
+              >
+                {uploading ? (
+                  <span className="candidate-spinner-small"></span>
+                ) : (
+                  <Icons.Upload />
+                )}
+                <span>{uploading ? 'Uploading...' : 'Resume'}</span>
+              </button>
+            </>
+          )}
 
-        {isJoinable && !isPast && (
-          <Link to={`/interview/${interview.id}`} className="candidate-btn candidate-btn--primary">
-            <Icons.Play />
-            <span>Join Interview</span>
-            <Icons.ChevronRight />
-          </Link>
-        )}
+          {isJoinable && !isPast && (
+            <Link to={`/interview/${interview.id}`} className="candidate-btn candidate-btn--primary">
+              <Icons.Play />
+              <span>Join</span>
+              <Icons.ChevronRight />
+            </Link>
+          )}
+        </div>
 
         {interview.status === 'completed' && (
           <div className="candidate-card__completed">
             <Icons.CheckCircle />
-            <span>Interview Completed</span>
+            <span>Completed</span>
           </div>
         )}
       </div>

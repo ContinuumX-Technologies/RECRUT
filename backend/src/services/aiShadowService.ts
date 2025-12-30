@@ -29,6 +29,56 @@ export class AIShadowService {
   // Initialize OpenAI Client
   private static openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+  // [NEW] Helper: Generate System Prompt with Verified GitHub Context
+  private static getSystemPrompt(resumeData: any | null): string {
+    let contextStr = "";
+    
+    // Check if we have the new Python-based structure (tech_stack_found is the key indicator)
+    if (resumeData && resumeData.tech_stack_found) {
+      const techStack = Object.keys(resumeData.tech_stack_found).join(", ");
+      
+      // Extract specific repos for context
+      // The Python script outputs: { github_users: [ { repos: [ { name, ecosystems } ] } ] }
+      const repos = resumeData.github_users?.[0]?.repos?.map((r: any) => 
+        `${r.name} (${r.ecosystems.join(', ')})`
+      ).join("; ");
+
+      contextStr = `
+      VERIFIED GITHUB AUDIT:
+      - Confirmed Tech Stack: ${techStack}
+      - Key Repositories: ${repos || "None found"}
+      
+      INSTRUCTION:
+      The candidate's technical skills have been verified via their GitHub code.
+      - If they claim a skill NOT in the "Confirmed Tech Stack", ask them to explain their experience with it.
+      - Ask specific questions about their repositories (e.g., "In repo X, why did you use Y?").
+      `;
+    } else {
+        contextStr = "No GitHub data available for this candidate.";
+    }
+
+    return `You are an expert Technical Interviewer AI. 
+    Analyze the candidate's audio answer directly.
+    
+    ${contextStr}
+    
+    TASK:
+    1. Transcribe the audio verbatim.
+    2. Rate the quality (1-10) based on technical depth and clarity.
+    3. Detect any contradictions with the provided context OR VERIFIED GITHUB CODE.
+    4. Identify the candidate's emotion/tone.
+    5. Generate ONE sharp follow-up question if needed.
+
+    OUTPUT JSON ONLY:
+    {
+      "transcript": "string",
+      "score": number,
+      "contradiction": "string" | null,
+      "emotion": "string",
+      "followUpQuestion": "string" | null
+    }`;
+  }
+
   // Fallback Mock Analysis
   private static async mockLLMAnalysis(text: string, context: string[]): Promise<AIAnalysisResult> {
     const isContradiction = text.toLowerCase().includes("never") && context.some(c => c.includes("always"));
@@ -44,32 +94,15 @@ export class AIShadowService {
   }
 
   // 1. Direct Audio Analysis (GPT-4o Audio)
-  private static async analyzeDirectAudio(base64Audio: string, context: string[]): Promise<AIAnalysisResult> {
+  private static async analyzeDirectAudio(base64Audio: string, context: string[], systemPrompt: string): Promise<AIAnalysisResult> {
     const response = await this.openai.chat.completions.create({
       model: "gpt-4o-audio-preview",
       modalities: ["text"], // Request text output (analysis) only
-      response_format: { type: "json_object" }, // <--- ADD THIS
+      response_format: { type: "json_object" }, 
       messages: [
         {
           role: "system",
-          content: `You are an expert Technical Interviewer AI. 
-          Analyze the candidate's audio answer directly.
-          
-          TASK:
-          1. Transcribe the audio verbatim.
-          2. Rate the quality (1-10) based on technical depth and clarity.
-          3. Detect any contradictions with the provided context.
-          4. Identify the candidate's emotion/tone.
-          5. Generate ONE sharp follow-up question if needed.
-
-          OUTPUT JSON ONLY:
-          {
-            "transcript": "string",
-            "score": number,
-            "contradiction": "string" | null,
-            "emotion": "string",
-            "followUpQuestion": "string" | null
-          }`
+          content: systemPrompt // [UPDATED] Uses GitHub-aware prompt
         },
         {
           role: "user",
@@ -82,7 +115,7 @@ export class AIShadowService {
               type: "input_audio",
               input_audio: {
                 data: base64Audio,
-                format: "wav" // [FIX] OpenAI strictly requires "wav" or "mp3". "mp4" causes Error 400.
+                format: "wav" 
               }
             }
           ]
@@ -96,7 +129,7 @@ export class AIShadowService {
   }
 
   // 2. Fallback: Whisper Transcription + GPT-4o Text Analysis
-  private static async analyzeViaWhisper(absolutePath: string, context: string[]): Promise<AIAnalysisResult> {
+  private static async analyzeViaWhisper(absolutePath: string, context: string[], systemPrompt: string): Promise<AIAnalysisResult> {
     console.log("[AIShadow] Fallback: Using Whisper + GPT-4o Text Analysis...");
 
     // Step A: Transcribe with Whisper
@@ -113,16 +146,7 @@ export class AIShadowService {
       messages: [
         {
           role: "system",
-          content: `You are an expert Technical Interviewer AI. 
-          Analyze the candidate's answer transcript.
-          
-          OUTPUT JSON ONLY:
-          {
-            "score": number,
-            "contradiction": "string" | null,
-            "emotion": "string", // Infer emotion from text tone/sentiment
-            "followUpQuestion": "string" | null
-          }`
+          content: systemPrompt // [UPDATED] Uses GitHub-aware prompt
         },
         {
           role: "user",
@@ -161,7 +185,7 @@ export class AIShadowService {
   }
 
   // Main Orchestrator
-  private static async analyzeWithOpenAI(audioPath: string, context: string[]): Promise<AIAnalysisResult> {
+  private static async analyzeWithOpenAI(audioPath: string, context: string[], resumeData: any | null): Promise<AIAnalysisResult> {
     if (!process.env.OPENAI_API_KEY) {
       console.warn("[AIShadow] OPENAI_API_KEY is missing. Using mock analysis.");
       return this.mockLLMAnalysis("Audio analysis skipped (No Key)", context);
@@ -173,6 +197,9 @@ export class AIShadowService {
         throw new Error(`Audio file not found at ${absolutePath}`);
       }
 
+      // [NEW] Generate the System Prompt using Resume Data
+      const systemPrompt = this.getSystemPrompt(resumeData);
+
       // [FIX] Always convert to WAV before sending to GPT-4o Audio
       const wavPath = await this.ensureWav(absolutePath);
 
@@ -180,12 +207,12 @@ export class AIShadowService {
       try {
         const fileBuffer = fs.readFileSync(wavPath);
         const base64Audio = fileBuffer.toString('base64');
-        return await this.analyzeDirectAudio(base64Audio, context);
+        return await this.analyzeDirectAudio(base64Audio, context, systemPrompt);
       } catch (err: any) {
         // If GPT-4o Audio fails, fallback to Whisper
         if (err?.status === 400) {
           console.warn("[AIShadow] Direct audio rejected (400). Switching to Whisper fallback.");
-          return await this.analyzeViaWhisper(absolutePath, context);
+          return await this.analyzeViaWhisper(absolutePath, context, systemPrompt);
         }
         throw err;
       }
@@ -199,7 +226,12 @@ export class AIShadowService {
   // Entry point
   static async processAnswer(interviewId: string, mediaRecordId: string, audioPath: string) {
     try {
-      // 1. Get Context
+      // 1. Get Context AND Resume Data
+      const interview = await prisma.interview.findUnique({
+        where: { id: interviewId },
+        select: { resumeData: true } // [UPDATED] Fetch the stored GitHub scan
+      });
+
       const previousRecords = await prisma.mediaRecord.findMany({
         where: { interviewId, type: 'audio', id: { not: mediaRecordId } },
         select: { transcript: true },
@@ -210,8 +242,8 @@ export class AIShadowService {
         .map((r: { transcript: string | null }) => r.transcript)
         .filter((t: string | null): t is string => t !== null && t.length > 0);
 
-      // 2. Analyze
-      const analysis = await this.analyzeWithOpenAI(audioPath, context);
+      // 2. Analyze (Pass resumeData)
+      const analysis = await this.analyzeWithOpenAI(audioPath, context, interview?.resumeData);
 
       // 3. Save to DB
       const shadowAnalysisData = {

@@ -8,6 +8,7 @@ import multer from 'multer';
 import { MediaRecord } from '@prisma/client';
 import { runYoloAnalysis } from './services/yoloService';
 import { AIShadowService } from './services/aiShadowService'; // [FIX]: Import the service
+import { ResumeService } from './services/resume.service';
 import { prisma } from './lib/prisma';
 import {
   hashPassword,
@@ -950,6 +951,35 @@ ${code}
     res.json({ success: false, error: msg });
   } finally {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+});
+
+app.post('/api/interviews/:id/resume', upload.single('resume'), async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  if (!req.file) return res.status(400).json({ error: 'PDF resume required' });
+
+  try {
+    console.log(`[Resume] Starting Deep Scan for ${id}...`);
+    
+    // 1. Run Python Script
+    const scanResult = await ResumeService.parseResume(req.file.path);
+
+    // 2. Save JSON to Database
+    await prisma.interview.update({
+      where: { id },
+      data: {
+        resumeData: scanResult // Stores the GitHub analysis
+      }
+    });
+
+    console.log(`[Resume] Scan complete. Found ${Object.keys(scanResult.tech_stack_found || {}).length} ecosystems.`);
+
+    res.json({ ok: true, data: scanResult });
+
+  } catch (err: any) {
+    console.error("Resume Scan Failed:", err);
+    res.status(500).json({ error: 'Deep scan failed', details: err.message });
   }
 });
 
