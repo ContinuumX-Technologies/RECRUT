@@ -31,23 +31,33 @@ export class AIShadowService {
 
   // [UPDATED] Helper: Generate System Prompt with Full Resume Context
   private static getSystemPrompt(resumeData: any | null): string {
-    let resumeContext = "";
+    let resumeContext = "No resume text available.";
+    let skillsContext = "";
 
-    if (resumeData && resumeData.full_resume_text) {
-      // Truncate to ~3000 chars to avoid token limits while keeping key info
-      const cleanText = resumeData.full_resume_text.slice(0, 3000).replace(/\n+/g, " ");
-      resumeContext = `
-      CANDIDATE RESUME CONTEXT:
-      "${cleanText}..."
-      `;
-    } else {
-      resumeContext = "No resume text available.";
+    if (resumeData) {
+      // 1. Inject the Structured Skills (High Priority)
+      if (resumeData.skills_detected && Array.isArray(resumeData.skills_detected)) {
+         skillsContext = `DETECTED TECH STACK: ${resumeData.skills_detected.join(', ')}`;
+      }
+
+      // 2. Inject the Full Text (Truncated to avoid token limits)
+      if (resumeData.full_resume_text) {
+        const cleanText = resumeData.full_resume_text.slice(0, 3000).replace(/\n+/g, " ");
+        resumeContext = `
+        CANDIDATE RESUME RAW TEXT:
+        "${cleanText}..."
+        `;
+      }
     }
 
     return `You are an expert Technical Interviewer AI. 
     Analyze the candidate's audio answer directly.
     
+    === CANDIDATE PROFILE ===
+    ${skillsContext}
+
     ${resumeContext}
+    =========================
     
     INSTRUCTION:
     - Compare the candidate's answer against their RESUME CONTEXT.
