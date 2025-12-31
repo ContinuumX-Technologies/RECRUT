@@ -256,7 +256,15 @@ export function CandidateInterviewPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   
   // [NEW] Track hidden questions to maintain pagination count
-  const [hiddenQuestionIds, setHiddenQuestionIds] = useState<Set<string>>(new Set());
+  // Initialized from localStorage to persist hidden state across reloads
+  const [hiddenQuestionIds, setHiddenQuestionIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(`hidden_questions_${interviewId}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch (e) {
+      return new Set();
+    }
+  });
 
   // ==========================================
   // REFS
@@ -347,6 +355,16 @@ export function CandidateInterviewPage() {
   // ==========================================
   // EFFECTS
   // ==========================================
+
+  // [NEW] Persist hidden questions to localStorage
+  useEffect(() => {
+    if (interviewId) {
+      localStorage.setItem(
+        `hidden_questions_${interviewId}`, 
+        JSON.stringify(Array.from(hiddenQuestionIds))
+      );
+    }
+  }, [hiddenQuestionIds, interviewId]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -592,6 +610,16 @@ export function CandidateInterviewPage() {
 
   const totalQuestions = visibleQuestions.length; // Use visible count for pagination
   const currentQuestion = questions[currentIndex]; // Still use real question for content
+
+  // [NEW] Calculate Answered Count based on VISIBLE questions only
+  // This fixes the "2/1" issue by ignoring hidden parent questions in the count
+  const answeredVisibleCount = useMemo(() => {
+    return visibleQuestions.filter(q => {
+      // Find the raw index of this visible question to check against answeredQuestions set
+      const rawIndex = questions.findIndex(rawQ => rawQ.id === q.id);
+      return answeredQuestions.has(rawIndex);
+    }).length;
+  }, [visibleQuestions, questions, answeredQuestions]);
 
   const progress = useMemo(() =>
     totalQuestions > 0 ? ((currentVisualIndex + 1) / totalQuestions) * 100 : 0,
@@ -1392,12 +1420,12 @@ export function CandidateInterviewPage() {
                           fill="none"
                           stroke="var(--accent-primary)"
                           strokeWidth="3"
-                          strokeDasharray={`${(answeredQuestions.size / totalQuestions) * 100}, 100`}
+                          strokeDasharray={`${(answeredVisibleCount / totalQuestions) * 100}, 100`}
                           strokeLinecap="round"
                         />
                       </svg>
                       <span className="apple-progress-card__value">
-                        {answeredQuestions.size}/{totalQuestions}
+                        {answeredVisibleCount}/{totalQuestions}
                       </span>
                     </div>
                     <span className="apple-progress-card__label">Questions Answered</span>
