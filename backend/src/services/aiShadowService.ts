@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { generateContextAwareCodingQuestion } from './openai.service'; // [UPDATED] Import the coding question generator
+import { generateContextAwareCodingQuestion } from './openai.service';
 
 const execAsync = promisify(exec);
 
@@ -27,46 +27,37 @@ interface AIAnalysisResult {
 }
 
 export class AIShadowService {
-  // Initialize OpenAI Client
   private static openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  // [NEW] Helper: Generate System Prompt with Verified GitHub Context
+  // [UPDATED] Helper: Generate System Prompt with Full Resume Context
   private static getSystemPrompt(resumeData: any | null): string {
-    let contextStr = "";
-    
-    // Check if we have the new Python-based structure (tech_stack_found is the key indicator)
-    if (resumeData && resumeData.tech_stack_found) {
-      const techStack = Object.keys(resumeData.tech_stack_found).join(", ");
-      
-      // Extract specific repos for context
-      // The Python script outputs: { github_users: [ { repos: [ { name, ecosystems } ] } ] }
-      const repos = resumeData.github_users?.[0]?.repos?.map((r: any) => 
-        `${r.name} (${r.ecosystems.join(', ')})`
-      ).join("; ");
+    let resumeContext = "";
 
-      contextStr = `
-      VERIFIED GITHUB AUDIT:
-      - Confirmed Tech Stack: ${techStack}
-      - Key Repositories: ${repos || "None found"}
-      
-      INSTRUCTION:
-      The candidate's technical skills have been verified via their GitHub code.
-      - If they claim a skill NOT in the "Confirmed Tech Stack", ask them to explain their experience with it.
-      - Ask specific questions about their repositories (e.g., "In repo X, why did you use Y?").
+    if (resumeData && resumeData.full_resume_text) {
+      // Truncate to ~3000 chars to avoid token limits while keeping key info
+      const cleanText = resumeData.full_resume_text.slice(0, 3000).replace(/\n+/g, " ");
+      resumeContext = `
+      CANDIDATE RESUME CONTEXT:
+      "${cleanText}..."
       `;
     } else {
-        contextStr = "No GitHub data available for this candidate.";
+      resumeContext = "No resume text available.";
     }
 
     return `You are an expert Technical Interviewer AI. 
     Analyze the candidate's audio answer directly.
     
-    ${contextStr}
+    ${resumeContext}
     
+    INSTRUCTION:
+    - Compare the candidate's answer against their RESUME CONTEXT.
+    - If they mention a project or skill, verify if it aligns with the resume provided above.
+    - Detect if they contradict their own resume (e.g., claiming 5 years experience when resume says 1).
+
     TASK:
     1. Transcribe the audio verbatim.
     2. Rate the quality (1-10) based on technical depth and clarity.
-    3. Detect any contradictions with the provided context OR VERIFIED GITHUB CODE.
+    3. Detect any contradictions with the provided context OR RESUME.
     4. Identify the candidate's emotion/tone.
     5. Generate ONE sharp follow-up question if needed.
 
@@ -98,12 +89,12 @@ export class AIShadowService {
   private static async analyzeDirectAudio(base64Audio: string, context: string[], systemPrompt: string): Promise<AIAnalysisResult> {
     const response = await this.openai.chat.completions.create({
       model: "gpt-4o-audio-preview",
-      modalities: ["text"], // Request text output (analysis) only
+      modalities: ["text"], 
       response_format: { type: "json_object" }, 
       messages: [
         {
           role: "system",
-          content: systemPrompt // [UPDATED] Uses GitHub-aware prompt
+          content: systemPrompt 
         },
         {
           role: "user",
@@ -133,7 +124,6 @@ export class AIShadowService {
   private static async analyzeViaWhisper(absolutePath: string, context: string[], systemPrompt: string): Promise<AIAnalysisResult> {
     console.log("[AIShadow] Fallback: Using Whisper + GPT-4o Text Analysis...");
 
-    // Step A: Transcribe with Whisper
     const transcription = await this.openai.audio.transcriptions.create({
       file: fs.createReadStream(absolutePath),
       model: "whisper-1",
@@ -141,13 +131,12 @@ export class AIShadowService {
 
     const transcriptText = transcription.text;
 
-    // Step B: Analyze Text with GPT-4o
     const response = await this.openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: systemPrompt // [UPDATED] Uses GitHub-aware prompt
+          content: systemPrompt
         },
         {
           role: "user",
@@ -168,7 +157,7 @@ export class AIShadowService {
     };
   }
 
-  // Helper: Convert any audio input (mp4, webm, etc.) to WAV for OpenAI
+  // Helper: Convert to WAV
   private static async ensureWav(inputPath: string): Promise<string> {
     if (inputPath.toLowerCase().endsWith('.wav')) return inputPath;
 
@@ -180,7 +169,6 @@ export class AIShadowService {
       return outputPath;
     } catch (e) {
       console.error("[AIShadow] FFmpeg conversion failed:", e);
-      // THROW so the main loop catches it and switches to analyzeViaWhisper
       throw new Error("FFmpeg conversion failed - cannot proceed with Direct Audio analysis");
     }
   }
@@ -198,19 +186,15 @@ export class AIShadowService {
         throw new Error(`Audio file not found at ${absolutePath}`);
       }
 
-      // [NEW] Generate the System Prompt using Resume Data
+      // Generate System Prompt using Resume Data
       const systemPrompt = this.getSystemPrompt(resumeData);
-
-      // [FIX] Always convert to WAV before sending to GPT-4o Audio
       const wavPath = await this.ensureWav(absolutePath);
 
-      // Try Direct Audio (Preferred)
       try {
         const fileBuffer = fs.readFileSync(wavPath);
         const base64Audio = fileBuffer.toString('base64');
         return await this.analyzeDirectAudio(base64Audio, context, systemPrompt);
       } catch (err: any) {
-        // If GPT-4o Audio fails, fallback to Whisper
         if (err?.status === 400) {
           console.warn("[AIShadow] Direct audio rejected (400). Switching to Whisper fallback.");
           return await this.analyzeViaWhisper(absolutePath, context, systemPrompt);
@@ -227,10 +211,9 @@ export class AIShadowService {
   // Entry point
   static async processAnswer(interviewId: string, mediaRecordId: string, audioPath: string) {
     try {
-      // 1. Get Context AND Resume Data
       const interview = await prisma.interview.findUnique({
         where: { id: interviewId },
-        select: { resumeData: true } // [UPDATED] Fetch the stored GitHub scan
+        select: { resumeData: true } 
       });
 
       const previousRecords = await prisma.mediaRecord.findMany({
@@ -243,10 +226,8 @@ export class AIShadowService {
         .map((r: { transcript: string | null }) => r.transcript)
         .filter((t: string | null): t is string => t !== null && t.length > 0);
 
-      // 2. Analyze (Pass resumeData)
       const analysis = await this.analyzeWithOpenAI(audioPath, context, interview?.resumeData);
 
-      // 3. Save to DB
       const shadowAnalysisData = {
         score: analysis.score,
         contradiction: analysis.contradiction,
@@ -264,15 +245,11 @@ export class AIShadowService {
         }
       });
 
-      // 4. Follow-up
       if (analysis.followUpQuestion) {
-        // [UPDATED] Pass transcript to allow coding question generation
         await this.addFollowUpQuestion(interviewId, analysis.followUpQuestion, analysis.transcript);
       }
 
-      // 5. Summary
       await this.updateInterviewSummary(interviewId);
-
       return analysis;
 
     } catch (error) {
@@ -280,7 +257,6 @@ export class AIShadowService {
     }
   }
 
-  // [UPDATED] addFollowUpQuestion with Coding Challenge Logic
   private static async addFollowUpQuestion(interviewId: string, text: string, transcriptForContext?: string) {
     const interview = await prisma.interview.findUnique({ 
         where: { id: interviewId },
@@ -289,39 +265,28 @@ export class AIShadowService {
     
     if (!interview) return;
 
-    // [FIX 3] Merge config correctly (from previous turn)
     let activeConfig: any = interview.customConfig 
       ? JSON.parse(JSON.stringify(interview.customConfig)) 
       : (interview.template?.config ? JSON.parse(JSON.stringify(interview.template.config)) : {});
 
     const questions = Array.isArray(activeConfig.questions) ? activeConfig.questions : [];
 
-    // Limit follow-ups to 3
     const followUpCount = questions.filter((q: any) => q.id.startsWith('ai-followup') || q.id.startsWith('ai-code')).length;
     if (followUpCount >= 3) return;
 
-    // [NEW] DECISION LOGIC: 
-    // If the follow-up text explicitly asks to "write code" or "implement", 
-    // generate a coding challenge.
     const requiresCoding = text.toLowerCase().includes("implement") || text.toLowerCase().includes("write code") || text.toLowerCase().includes("coding problem");
-
     let newQuestion;
 
     if (requiresCoding && transcriptForContext) {
          try {
-             // 1. Generate the Code Question
              const codeQuestionRaw = await generateContextAwareCodingQuestion(transcriptForContext);
-             
-             // 2. Format it for the config
              newQuestion = {
-                 ...codeQuestionRaw, // Spread the AI generated fields (starterCode, testCases, etc)
+                 ...codeQuestionRaw,
                  id: `ai-code-${Date.now()}`,
-                 // Ensure type is 'code' so the frontend renders the IDE
                  type: 'code' 
              };
          } catch (error) {
              console.error("[AIShadow] Failed to generate coding question, falling back to audio:", error);
-             // Fallback to standard audio question
              newQuestion = {
                 id: `ai-followup-${Date.now()}`,
                 text: `(Follow-up) ${text}`,
@@ -330,7 +295,6 @@ export class AIShadowService {
              };
          }
     } else {
-         // Standard Audio/Text Follow-up
          newQuestion = {
             id: `ai-followup-${Date.now()}`,
             text: `(Follow-up) ${text}`,
@@ -343,9 +307,7 @@ export class AIShadowService {
 
     await prisma.interview.update({
       where: { id: interviewId },
-      data: {
-        customConfig: activeConfig
-      }
+      data: { customConfig: activeConfig }
     });
   }
 
@@ -371,9 +333,7 @@ export class AIShadowService {
 
     await prisma.interview.update({
       where: { id: interviewId },
-      data: {
-        aiSummary: aiSummaryData
-      }
+      data: { aiSummary: aiSummaryData }
     });
   }
 }
