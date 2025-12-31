@@ -16,10 +16,14 @@ interface AudioVisualizerProps {
     accentColor?: string;
     interviewId?: string;
     questionId?: string;
-    // New props for conversational mode
+    // Conversational mode props
     silenceDetection?: boolean;
     silenceDurationMs?: number;
-    silenceThreshold?: number;
+    // We keep this in the interface for backward compatibility with parent components,
+    // but the logic has moved to noiseGateThreshold.
+    silenceThreshold?: number; 
+    // [NEW] Threshold for the noise gate (0.0 - 1.0)
+    noiseGateThreshold?: number;
 }
 
 export default function AudioVisualizerCard({
@@ -33,9 +37,11 @@ export default function AudioVisualizerCard({
     accentColor = '#0071e3',
     interviewId,
     questionId,
-    silenceDetection = true, // Default enabled for conversational flow
-    silenceDurationMs = 2500, // ~2.5 seconds default
-    silenceThreshold = 0.05 // Slightly higher to avoid background noise triggering "speech"
+    silenceDetection = true, 
+    silenceDurationMs = 2500, 
+    // silenceThreshold, <--- REMOVED this line to fix the TS error
+    // [NEW] Default threshold for background noise (0.02 is a good starting point for filtering distant voices)
+    noiseGateThreshold = 0.02
 }: AudioVisualizerProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [isRecording, setIsRecording] = useState(false);
@@ -52,6 +58,11 @@ export default function AudioVisualizerCard({
     const streamRef = useRef<MediaStream | null>(null);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const animationRef = useRef<number | null>(null);
+
+    // [NEW] Refs for Audio Processing Nodes (Noise Gate)
+    const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+    const processorNodeRef = useRef<ScriptProcessorNode | null>(null);
+    const destinationNodeRef = useRef<MediaStreamAudioDestinationNode | null>(null);
 
     // Silence Detection Refs
     const lastAudioDetectedRef = useRef<number>(0);
@@ -94,8 +105,13 @@ export default function AudioVisualizerCard({
             analyser.smoothingTimeConstant = 0.8;
             analyserRef.current = analyser;
 
+            // Connect raw stream to analyser for visualization
+            // This ensures the visualizer shows ALL sound (including background), as requested for analysis/feedback
             const source = audioCtx.createMediaStreamSource(stream);
             source.connect(analyser);
+            
+            // Store source for later use in the Noise Gate
+            sourceNodeRef.current = source;
 
             setPermissionGranted(true);
             setPermissionDenied(false);
@@ -143,21 +159,86 @@ export default function AudioVisualizerCard({
         }
     };
 
-    // Start recording
+    // Start recording with Noise Gate
     const startRecording = useCallback(async () => {
         const initialized = await initializeAudio();
-        if (!initialized || !streamRef.current) return;
+        if (!initialized || !streamRef.current || !audioContextRef.current) return;
 
         setIsRecording(true);
         setIsPaused(false);
         setDuration(0);
-        
-        // Reset silence detection
+
+        // Reset silence detection state
         speechStartedRef.current = false;
         processingSilenceRef.current = false;
         lastAudioDetectedRef.current = Date.now();
 
-        // 1. Start MediaRecorder
+        const audioCtx = audioContextRef.current;
+
+        // 1. Ensure Source Node exists (created in initializeAudio)
+        if (!sourceNodeRef.current) {
+            sourceNodeRef.current = audioCtx.createMediaStreamSource(streamRef.current);
+        }
+
+        // 2. Create Destination for Processed (Gated) Audio
+        // This is what the MediaRecorder will listen to
+        const destination = audioCtx.createMediaStreamDestination();
+        destinationNodeRef.current = destination;
+
+        // 3. Create ScriptProcessor for Noise Gate Logic
+        // 4096 buffer size = ~92ms latency at 44.1kHz, good balance for performance/accuracy
+        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        processorNodeRef.current = processor;
+
+        // Noise Gate State
+        const threshold = noiseGateThreshold;
+        let holdCounter = 0;
+        const holdSamples = 4410; // ~100ms hold time to avoid cutting off soft word endings
+
+        // 4. Implement Audio Processing Logic
+        processor.onaudioprocess = (e) => {
+            const input = e.inputBuffer.getChannelData(0);
+            const output = e.outputBuffer.getChannelData(0);
+            let hasSignal = false; // Track if this buffer contains valid speech
+
+            for (let i = 0; i < input.length; i++) {
+                const amplitude = Math.abs(input[i]);
+
+                if (amplitude > threshold) {
+                    // Signal is loud enough (Candidate speaking)
+                    output[i] = input[i];
+                    holdCounter = holdSamples; // Reset hold timer
+                    hasSignal = true;
+                } else if (holdCounter > 0) {
+                    // Signal is quiet, but we are holding (trailing voice)
+                    output[i] = input[i];
+                    holdCounter--;
+                    hasSignal = true; // Still counts as speech
+                } else {
+                    // Signal is background noise -> Mute it
+                    output[i] = 0;
+                }
+            }
+
+            // [CRITICAL] Link Silence Detection directly to the Noise Gate
+            // If the gate let sound through (hasSignal), we know the user is speaking.
+            // If the gate muted everything, it counts as silence for the timer.
+            if (hasSignal) {
+                lastAudioDetectedRef.current = Date.now();
+                if (!speechStartedRef.current) {
+                    speechStartedRef.current = true;
+                }
+            }
+        };
+
+        // 5. Connect the Graph: Source -> Processor -> Destination
+        sourceNodeRef.current.connect(processor);
+        processor.connect(destination);
+
+        // ============================================================
+        // MediaRecorder Setup (Recording from the GATED destination)
+        // ============================================================
+
         let mimeType = 'audio/webm';
         if (MediaRecorder.isTypeSupported('audio/mp4')) {
             mimeType = 'audio/mp4';
@@ -165,7 +246,7 @@ export default function AudioVisualizerCard({
             mimeType = 'audio/webm;codecs=opus';
         }
 
-        const recorder = new MediaRecorder(streamRef.current, { mimeType });
+        const recorder = new MediaRecorder(destination.stream, { mimeType });
         chunksRef.current = [];
 
         recorder.ondataavailable = (e) => {
@@ -175,24 +256,29 @@ export default function AudioVisualizerCard({
         recorder.onstop = async () => {
             const blob = new Blob(chunksRef.current, { type: mimeType });
             await uploadAudio(blob, mimeType);
+
+            // Cleanup processing nodes to free resources
+            if (processorNodeRef.current) {
+                processorNodeRef.current.disconnect();
+                // Ideally also disconnect from source, but source is shared with visualizer
+                try { sourceNodeRef.current?.disconnect(processorNodeRef.current); } catch (e) { }
+            }
         };
 
-        recorder.start(1000); // Collect slices every second
+        recorder.start(1000);
         mediaRecorderRef.current = recorder;
 
-        // 2. Start duration timer
         timerRef.current = setInterval(() => {
             setDuration(prev => prev + 1);
         }, 1000);
 
         onRecordingStart?.();
-    }, [initializeAudio, onRecordingStart, interviewId, questionId]);
+    }, [initializeAudio, onRecordingStart, interviewId, questionId, noiseGateThreshold]);
 
     // Stop recording
     const stopRecording = useCallback(() => {
-        // Prevent double stopping
         if (processingSilenceRef.current && !isRecording) return;
-        
+
         setIsRecording(false);
         setIsPaused(false);
 
@@ -203,6 +289,12 @@ export default function AudioVisualizerCard({
 
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
+        }
+
+        // Cleanup Processor
+        if (processorNodeRef.current) {
+            processorNodeRef.current.disconnect();
+            processorNodeRef.current = null;
         }
 
         onRecordingStop?.(duration);
@@ -216,7 +308,6 @@ export default function AudioVisualizerCard({
                 setDuration(prev => prev + 1);
             }, 1000);
             mediaRecorderRef.current?.resume();
-            // Reset silence timer on resume
             lastAudioDetectedRef.current = Date.now();
         } else {
             // Pause
@@ -246,19 +337,19 @@ export default function AudioVisualizerCard({
             // Only check if user has actually started speaking
             if (speechStartedRef.current) {
                 const timeSinceAudio = Date.now() - lastAudioDetectedRef.current;
-                
+
                 if (timeSinceAudio > silenceDurationMs) {
                     console.log(`Silence detected (${timeSinceAudio}ms), auto-submitting...`);
                     processingSilenceRef.current = true;
                     stopRecording();
                 }
             }
-        }, 200); // Check 5 times a second
+        }, 200);
 
         return () => clearInterval(interval);
     }, [isRecording, isPaused, silenceDetection, silenceDurationMs, stopRecording]);
 
-    // Three.js visualization (Unchanged logic + Audio Level Detection)
+    // Three.js Visualization
     useEffect(() => {
         if (!containerRef.current || !permissionGranted) return;
 
@@ -272,15 +363,10 @@ export default function AudioVisualizerCard({
         renderer.setSize(container.clientWidth, container.clientHeight);
         container.appendChild(renderer.domElement);
 
-        const audioCtx = new AudioContext();
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 2048;
+        const analyser = analyserRef.current;
+        if (!analyser) return;
+        
         const freqData = new Uint8Array(analyser.frequencyBinCount);
-
-        if (streamRef.current) {
-            const source = audioCtx.createMediaStreamSource(streamRef.current);
-            source.connect(analyser);
-        }
 
         const COUNT = 10000;
         const positions = new Float32Array(COUNT * 3);
@@ -344,16 +430,13 @@ export default function AudioVisualizerCard({
             let bass = 0;
             for (let i = 0; i < 50; i++) bass += freqData[i];
             bass = bass / 50 / 255;
-            
-            // Audio Level Tracking for Silence Detection
-            setAudioLevel(bass); // Update state for UI
-            
-            if (bass > silenceThreshold) {
-                lastAudioDetectedRef.current = Date.now();
-                if (!speechStartedRef.current) {
-                    speechStartedRef.current = true;
-                }
-            }
+
+            // Update UI state
+            setAudioLevel(bass); 
+
+            // NOTE: Silence detection is NOT handled here anymore.
+            // It is handled in the ScriptProcessorNode (onaudioprocess) to align with the Noise Gate.
+            // This ensures we only reset the timer if the voice is loud enough to pass the gate.
 
             material.uniforms.uTime.value += 0.01;
             const current = material.uniforms.uBass.value;
@@ -376,9 +459,9 @@ export default function AudioVisualizerCard({
             if (animationRef.current) cancelAnimationFrame(animationRef.current);
             renderer.dispose(); geometry.dispose(); material.dispose();
             if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
-            audioCtx.close();
+            // Don't close audioCtx here as it might be shared or needed for subsequent recordings
         };
-    }, [permissionGranted, onAudioLevel, silenceThreshold]);
+    }, [permissionGranted, onAudioLevel]); 
 
     // Cleanup on unmount
     useEffect(() => {
@@ -386,6 +469,8 @@ export default function AudioVisualizerCard({
             if (timerRef.current) clearInterval(timerRef.current);
             if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
             if (audioContextRef.current) audioContextRef.current.close();
+            // Disconnect processor if exists
+            if (processorNodeRef.current) processorNodeRef.current.disconnect();
         };
     }, []);
 
@@ -477,7 +562,7 @@ export default function AudioVisualizerCard({
     );
 }
 
-// Icon Components (Same as before)
+// Icon Components
 const MicIcon = () => (<svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z" /></svg>);
 const MicOffIcon = () => (<svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M19 11c0 1.19-.34 2.3-.9 3.28l-1.23-1.23c.27-.62.43-1.31.43-2.05H19zm-4 .16L9 5.18V5c0-1.66 1.34-3 3-3s3 1.34 3 3v6.16zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V20h2v-2.28c.88-.11 1.71-.38 2.48-.77L19.73 21 21 19.73 4.27 3z" /></svg>);
 const PlayIcon = () => (<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z" /></svg>);
