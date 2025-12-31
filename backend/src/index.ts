@@ -962,19 +962,31 @@ app.post('/api/interviews/:id/resume', upload.single('resume'), async (req: Requ
   try {
     console.log(`[Resume] Starting Deep Scan for ${id}...`);
     
-    // 1. Run Python Script
+    // 1. Run Python Script to Parse Resume
     const scanResult = await ResumeService.parseResume(req.file.path);
 
-    // 2. Save JSON to Database
+    // ---------------------------------------------------------
+    // [NEW] Save Parsed Output to Upload Directory
+    // ---------------------------------------------------------
+    // Create a file path with .json extension (e.g., "123-resume.pdf.json")
+    const jsonOutputPath = `${req.file.path}.json`;
+    
+    // Write the JSON result to the filesystem
+    fs.writeFileSync(jsonOutputPath, JSON.stringify(scanResult, null, 2));
+    console.log(`[Resume] Saved parsed output to: ${jsonOutputPath}`);
+    // ---------------------------------------------------------
+
+    // 2. Save JSON to Database (Existing Logic)
     await prisma.interview.update({
       where: { id },
       data: {
-        resumeData: scanResult // Stores the GitHub analysis
+        resumeData: scanResult 
       }
     });
 
     console.log(`[Resume] Scan complete. Found ${Object.keys(scanResult.tech_stack_found || {}).length} ecosystems.`);
 
+    // Return success
     res.json({ ok: true, data: scanResult });
 
   } catch (err: any) {
