@@ -18,8 +18,8 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
   
   const isSphereRef = useRef<boolean>(true);
   
-  // Configuration
-  const particleCount = 15000;
+  // High particle count for dense, readable multi-line text
+  const particleCount = 45000; 
   const baseFontSize = 100;
 
   useEffect(() => {
@@ -53,9 +53,9 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
         const theta = Math.sqrt(particleCount * Math.PI) * phi;
         const r = 10;
         
-        positions[i * 3] = r * Math.cos(theta) * Math.sin(phi) + (Math.random() - 0.5);
-        positions[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi) + (Math.random() - 0.5);
-        positions[i * 3 + 2] = r * Math.cos(phi) + (Math.random() - 0.5);
+        positions[i * 3] = r * Math.cos(theta) * Math.sin(phi);
+        positions[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi);
+        positions[i * 3 + 2] = r * Math.cos(phi);
 
         const color = new THREE.Color();
         color.setHSL(0, 0, 0.1 + Math.random() * 0.2); // Dark grey/black
@@ -69,11 +69,11 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
     const material = new THREE.PointsMaterial({
-      size: 0.2,
+      size: 0.2, 
       vertexColors: true,
       blending: THREE.NormalBlending, 
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.95,
       sizeAttenuation: true
     });
 
@@ -83,26 +83,21 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
 
     // --- 3. ANIMATION LOOP ---
     const animate = () => {
-      // Safety check: Stop if refs are null (component unmounted)
       if (!sceneRef.current || !cameraRef.current || !rendererRef.current) return;
-
       animationFrameRef.current = requestAnimationFrame(animate);
-      
       if (particlesRef.current && isSphereRef.current) {
         particlesRef.current.rotation.y += 0.002;
       }
-      
       rendererRef.current.render(sceneRef.current, cameraRef.current);
     };
     animate();
 
-    // --- 4. ROBUST RESIZE HANDLER (ResizeObserver) ---
-    // This handles layout shifts (like when "Response Saved" appears) automatically
+    // --- 4. RESIZE HANDLER ---
     const handleResize = () => {
       if (!container || !cameraRef.current || !rendererRef.current) return;
       const w = container.clientWidth;
       const h = container.clientHeight;
-      if (w === 0 || h === 0) return; // Prevent 0-size errors
+      if (w === 0 || h === 0) return;
 
       cameraRef.current.aspect = w / h;
       cameraRef.current.updateProjectionMatrix();
@@ -112,24 +107,14 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
     const resizeObserver = new ResizeObserver(() => handleResize());
     resizeObserver.observe(container);
 
-    // --- CLEANUP ---
     return () => {
       resizeObserver.disconnect();
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-      
-      // IMPORTANT: Kill any running GSAP animations to prevent crash
       if (timelineRef.current) timelineRef.current.kill();
-
-      if (renderer.domElement && container) {
-        container.removeChild(renderer.domElement);
-      }
-      
-      // Dispose resources
+      if (renderer.domElement && container) container.removeChild(renderer.domElement);
       geometry.dispose();
       material.dispose();
       renderer.dispose();
-      
-      // Nullify refs to prevent loop from running
       sceneRef.current = null;
       cameraRef.current = null;
       rendererRef.current = null;
@@ -139,15 +124,26 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
 
   // --- MORPHING LOGIC ---
   useEffect(() => {
-    if (!particlesRef.current || !text) return;
+    if (!particlesRef.current || !text || !containerRef.current) return;
 
-    // Helper: Generate Points from Text
+    // 1. Calculate Visible 3D Bounds
+    const container = containerRef.current;
+    const aspect = container.clientWidth / container.clientHeight;
+    const fov = 45; 
+    const cameraZ = 50;
+    const vFovRad = (fov * Math.PI) / 180;
+    const visibleHeight = 2 * Math.tan(vFovRad / 2) * cameraZ;
+    const visibleWidth = visibleHeight * aspect;
+
+    // 2. Generate Points from Text
     const getTargetPoints = (str: string) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         if (!ctx) return [];
 
-        const maxLineWidth = 1200; 
+        // [MODIFIED] Set a realistic width limit to force wrapping
+        // This ensures long text breaks into multiple lines instead of one giant thin line
+        const maxLineWidth = 1800; 
         const lineHeight = baseFontSize * 1.2;
         
         ctx.font = `900 ${baseFontSize}px "Inter", sans-serif`;
@@ -156,6 +152,7 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
         let line = '';
         const lines = [];
         
+        // Word wrap logic
         for(let n = 0; n < words.length; n++) {
             const testLine = line + words[n] + ' ';
             const metrics = ctx.measureText(testLine);
@@ -168,15 +165,18 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
         }
         lines.push(line);
 
-        canvas.width = maxLineWidth + 200;
-        canvas.height = (lines.length * lineHeight) + 200;
+        canvas.width = maxLineWidth + 200; 
+        // Dynamic height based on number of lines
+        canvas.height = (lines.length * lineHeight) + 400; 
 
         ctx.fillStyle = 'white';
         ctx.font = `900 ${baseFontSize}px "Inter", sans-serif`;
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
 
-        const startY = (canvas.height - (lines.length * lineHeight)) / 2 + (lineHeight/2);
+        // Draw text lines centered
+        const totalTextHeight = lines.length * lineHeight;
+        const startY = (canvas.height - totalTextHeight) / 2 + (lineHeight / 2);
         
         lines.forEach((l, i) => {
             ctx.fillText(l, canvas.width / 2, startY + (i * lineHeight));
@@ -185,39 +185,68 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const pixels = imageData.data;
         const points = [];
-        const step = 4;
+        
+        // Adaptive sampling step
+        const step = str.length > 100 ? 3 : 2; 
 
         for (let i = 0; i < pixels.length; i += 4 * step) {
             if (pixels[i] > 128) {
                 const posX = (i / 4) % canvas.width;
                 const posY = Math.floor((i / 4) / canvas.width);
                 points.push({
-                    x: (posX - canvas.width / 2) / 10, // Scaling factor (Lower = Bigger Text)
-                    y: -(posY - canvas.height / 2) / 10
+                    x: posX - canvas.width / 2,
+                    y: -(posY - canvas.height / 2)
                 });
             }
         }
+        return points;
+    };
 
-        if (points.length > 0) {
-          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-          points.forEach(p => {
+    const rawTextPoints = getTargetPoints(text);
+
+    // Shuffle points to prevent "cut off" look if we hit the particle limit
+    if (rawTextPoints.length > particleCount) {
+        for (let i = rawTextPoints.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [rawTextPoints[i], rawTextPoints[j]] = [rawTextPoints[j], rawTextPoints[i]];
+        }
+    }
+
+    // 3. Calculate Bounding Box
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    
+    // Use only as many points as we have particles
+    const pointsToMeasure = rawTextPoints.slice(0, particleCount);
+    
+    if (pointsToMeasure.length > 0) {
+        pointsToMeasure.forEach(p => {
             if (p.x < minX) minX = p.x;
             if (p.x > maxX) maxX = p.x;
             if (p.y < minY) minY = p.y;
             if (p.y > maxY) maxY = p.y;
-          });
-          const centerX = (minX + maxX) / 2;
-          const centerY = (minY + maxY) / 2;
-          points.forEach(p => {
-            p.x -= centerX;
-            p.y -= centerY;
-          });
-        }
+        });
+    } else {
+        minX = -1; maxX = 1; minY = -1; maxY = 1;
+    }
 
-        return points;
-    };
+    const textWidth = maxX - minX;
+    const textHeight = maxY - minY;
 
-    // Calculate Targets
+    // 4. Calculate Dynamic Scale Factor
+    const padding = 0.85; 
+    const scaleX = (visibleWidth * padding) / textWidth;
+    const scaleY = (visibleHeight * padding) / textHeight;
+    
+    const fitScale = Math.min(scaleX, scaleY);
+    
+    // [MODIFIED] Increased max scale cap to 0.35
+    // Since text is now multi-line, it's not as wide, so we can afford to make it bigger!
+    const finalScale = Math.min(fitScale, 0.35); 
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    // 5. Update Particles
     const geometry = particlesRef.current.geometry;
     const currentPositions = geometry.attributes.position.array as Float32Array;
     
@@ -231,20 +260,21 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
         spherePositions[i * 3 + 2] = r * Math.cos(phi);
     }
 
-    const textPoints = getTargetPoints(text);
     const textPositions = new Float32Array(particleCount * 3);
     
     for (let i = 0; i < particleCount; i++) {
-        if (i < textPoints.length) {
-            textPositions[i * 3] = textPoints[i].x;
-            textPositions[i * 3 + 1] = textPoints[i].y;
-            textPositions[i * 3 + 2] = 0; 
+        if (i < rawTextPoints.length) {
+            const p = rawTextPoints[i];
+            textPositions[i * 3] = (p.x - centerX) * finalScale;
+            textPositions[i * 3 + 1] = (p.y - centerY) * finalScale;
+            textPositions[i * 3 + 2] = 0;
         } else {
-            const rndIndex = Math.floor(Math.random() * textPoints.length);
-            if (textPoints.length > 0) {
-                 textPositions[i * 3] = textPoints[rndIndex].x;
-                 textPositions[i * 3 + 1] = textPoints[rndIndex].y;
-                 textPositions[i * 3 + 2] = (Math.random() - 0.5) * 5; 
+            const rndIndex = Math.floor(Math.random() * rawTextPoints.length);
+            if (rawTextPoints.length > 0) {
+                 const p = rawTextPoints[rndIndex];
+                 textPositions[i * 3] = (p.x - centerX) * finalScale;
+                 textPositions[i * 3 + 1] = (p.y - centerY) * finalScale;
+                 textPositions[i * 3 + 2] = (Math.random() - 0.5) * 3; 
             } else {
                 textPositions[i * 3] = 0;
                 textPositions[i * 3+1] = 0;
@@ -253,24 +283,17 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
         }
     }
 
-    // --- ANIMATION EXECUTION ---
-    // Kill previous timeline if it exists to avoid conflicts
-    if (timelineRef.current) {
-        timelineRef.current.kill();
-    }
-
+    if (timelineRef.current) timelineRef.current.kill();
     const tl = gsap.timeline();
-    timelineRef.current = tl; // Store ref
+    timelineRef.current = tl;
     
     const dummy = { val: 0 };
     const startPosCopy = Float32Array.from(currentPositions);
 
-    // 1. Morph to Sphere
     tl.add(() => { isSphereRef.current = true; }); 
-    
     tl.to(dummy, {
         val: 1,
-        duration: 0.8,
+        duration: 0.6,
         ease: "power2.inOut",
         onUpdate: () => {
             const t = dummy.val;
@@ -281,10 +304,8 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
         }
     });
 
-    // 2. Pause
-    tl.to({}, { duration: 0.2 });
+    tl.to({}, { duration: 0.1 });
 
-    // 3. Morph to Text
     tl.add(() => { 
         isSphereRef.current = false; 
         if (particlesRef.current) {
@@ -304,8 +325,8 @@ export const MorphingParticleText = ({ text, className = '' }: MorphingParticleT
     
     tl.to(dummy, {
         val: 1,
-        duration: 1.5,
-        ease: "elastic.out(1, 0.5)",
+        duration: 1.2,
+        ease: "expo.out",
         onUpdate: () => {
             const t = dummy.val;
             for (let i = 0; i < particleCount * 3; i++) {
