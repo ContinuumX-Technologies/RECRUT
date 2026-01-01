@@ -9,6 +9,7 @@ import { MediaRecord } from '@prisma/client';
 import { runYoloAnalysis } from './services/yoloService';
 import { AIShadowService } from './services/aiShadowService'; // [FIX]: Import the service
 import { ResumeService } from './services/resume.service';
+import { synthesizeRajeshVoice } from './services/humeVoice.service';
 import { prisma } from './lib/prisma';
 import {
   hashPassword,
@@ -48,6 +49,7 @@ app.use("/api/admin", aiRoutes);
 app.use("/api/judge", judgeRoutes);
 app.use("/api/admin", verifyRoutes);
 app.use("/api/admin", previewRoutes);
+app.use('/ai-voice', express.static(path.resolve('public/ai-voice')));
 
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -992,6 +994,22 @@ app.post('/api/interviews/:id/resume', upload.single('resume'), async (req: Requ
   } catch (err: any) {
     console.error("Resume Scan Failed:", err);
     res.status(500).json({ error: 'Deep scan failed', details: err.message });
+  }
+});
+
+app.post('/api/voice/synthesize', async (req: Request, res: Response) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: 'Text required' });
+    
+    // Call Hume service
+    const result = await synthesizeRajeshVoice(text);
+    
+    // Returns: { audioPath: "/ai-voice/filename.mp3" }
+    res.json(result);
+  } catch (err: any) {
+    console.error("Voice synthesis error:", err);
+    res.status(500).json({ error: err.message || "Synthesis failed" });
   }
 });
 
