@@ -252,9 +252,9 @@ export function CandidateInterviewPage() {
     runtime?: string;
     memory?: string;
   } | null>(null);
-
+  
   const [isProcessing, setIsProcessing] = useState(false);
-
+  
   // [NEW] Track hidden questions to maintain pagination count
   // Initialized from localStorage to persist hidden state across reloads
   const [hiddenQuestionIds, setHiddenQuestionIds] = useState<Set<string>>(() => {
@@ -274,7 +274,7 @@ export function CandidateInterviewPage() {
   const mobileVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const prevQuestionsRef = useRef<Question[]>([]);
-
+  
   const prevIndexRef = useRef<number>(currentIndex);
   const prevIdRef = useRef<string | undefined>(undefined);
 
@@ -287,36 +287,23 @@ export function CandidateInterviewPage() {
 
   const [configLoaded, setConfigLoaded] = useState(false);
 
-  // [NEW] Human-like Text-to-Speech Helper
-  const speakQuestion = useCallback(async (text: string) => {
-    try {
-      // Stop any currently playing browser speech
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
+  // Text-to-Speech Helper
+  const speakQuestion = useCallback((text: string) => {
+    if (!window.speechSynthesis) return;
+    
+    window.speechSynthesis.cancel();
 
-      const response = await fetch(`${API_BASE}/api/ai/speak`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0; 
+    utterance.pitch = 1.0;
+    
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice => 
+      voice.name.includes('Google US English') || voice.name.includes('Samantha')
+    );
+    if (preferredVoice) utterance.voice = preferredVoice;
 
-      if (!response.ok) throw new Error("TTS request failed");
-
-      const blob = await response.blob();
-      const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
-
-      // Optional: Adjust playback speed slightly if needed
-      // audio.playbackRate = 1.0; 
-
-      await audio.play();
-    } catch (err) {
-      console.error("Failed to play human-like voice:", err);
-      // Fallback to browser voice if API fails
-      if (window.speechSynthesis) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        window.speechSynthesis.speak(utterance);
-      }
-    }
+    window.speechSynthesis.speak(utterance);
   }, []);
 
   const fetchConfig = useCallback(async (force = false) => {
@@ -373,7 +360,7 @@ export function CandidateInterviewPage() {
   useEffect(() => {
     if (interviewId) {
       localStorage.setItem(
-        `hidden_questions_${interviewId}`,
+        `hidden_questions_${interviewId}`, 
         JSON.stringify(Array.from(hiddenQuestionIds))
       );
     }
@@ -391,7 +378,7 @@ export function CandidateInterviewPage() {
     if (isProcessing) {
       console.log("Waiting for follow-up generation (polling)...");
       pollTimer = window.setInterval(async () => {
-        await fetchConfig(true);
+         await fetchConfig(true);
       }, 2000);
     }
 
@@ -414,37 +401,37 @@ export function CandidateInterviewPage() {
     if (currentQuestions.length > prevQuestions.length) {
       console.log("New questions detected. Checking for follow-up insertion...");
       const potentialNextIndex = currentIndex + 1;
-
+      
       if (potentialNextIndex < currentQuestions.length) {
         const nextQuestion = currentQuestions[potentialNextIndex];
         const prevQuestionAtNextIndex = prevQuestions[potentialNextIndex];
 
         // Heuristic: If we are inserting a question right after the current one
         if (!prevQuestionAtNextIndex || nextQuestion.id !== prevQuestionAtNextIndex.id) {
-          console.log("Follow-up question detected (Insertion). Hiding parent and auto-advancing...");
+           console.log("Follow-up question detected (Insertion). Hiding parent and auto-advancing...");
+           
+           // [FIX] Hide the current (parent) question so pagination doesn't grow
+           const parentQuestionId = currentQuestions[currentIndex].id;
+           setHiddenQuestionIds(prev => new Set(prev).add(parentQuestionId));
 
-          // [FIX] Hide the current (parent) question so pagination doesn't grow
-          const parentQuestionId = currentQuestions[currentIndex].id;
-          setHiddenQuestionIds(prev => new Set(prev).add(parentQuestionId));
-
-          setIsProcessing(false);
-          setCurrentIndex(potentialNextIndex);
-          setTimeout(() => speakQuestion(nextQuestion.text), 500);
-          prevQuestionsRef.current = currentQuestions;
+           setIsProcessing(false); 
+           setCurrentIndex(potentialNextIndex);
+           setTimeout(() => speakQuestion(nextQuestion.text), 500);
+           prevQuestionsRef.current = currentQuestions; 
         }
       }
-    }
+    } 
     // 2. Detection: Question List Same Length (In-Place Update/Replacement)
     else if (currentQuestions.length === prevQuestions.length) {
-      const currentQ = currentQuestions[currentIndex];
-      const prevQ = prevQuestions[currentIndex];
+        const currentQ = currentQuestions[currentIndex];
+        const prevQ = prevQuestions[currentIndex];
 
-      if (currentQ && prevQ && currentQ.id !== prevQ.id) {
-        console.log("Follow-up question detected (Replacement). Updating UI...");
-        setIsProcessing(false);
-        setTimeout(() => speakQuestion(currentQ.text), 500);
-        prevQuestionsRef.current = currentQuestions;
-      }
+        if (currentQ && prevQ && currentQ.id !== prevQ.id) {
+            console.log("Follow-up question detected (Replacement). Updating UI...");
+            setIsProcessing(false);
+            setTimeout(() => speakQuestion(currentQ.text), 500);
+            prevQuestionsRef.current = currentQuestions;
+        }
     }
   }, [config, currentIndex, speakQuestion]);
 
@@ -454,22 +441,22 @@ export function CandidateInterviewPage() {
     if (!currentQuestionId) return;
 
     if (currentIndex === prevIndexRef.current && currentQuestionId !== prevIdRef.current) {
-      console.log("Question ID changed at same index - Resetting answered status for follow-up");
-
-      setAnsweredQuestions(prev => {
-        const next = new Set(prev);
-        if (next.has(currentIndex)) {
-          next.delete(currentIndex);
-          return next;
-        }
-        return prev;
-      });
-
-      setAnswers(prev => {
-        const next = { ...prev };
-        delete next[currentQuestionId];
-        return next;
-      });
+        console.log("Question ID changed at same index - Resetting answered status for follow-up");
+        
+        setAnsweredQuestions(prev => {
+            const next = new Set(prev);
+            if (next.has(currentIndex)) {
+                next.delete(currentIndex);
+                return next;
+            }
+            return prev;
+        });
+        
+        setAnswers(prev => {
+            const next = { ...prev };
+            delete next[currentQuestionId];
+            return next;
+        });
     }
 
     prevIndexRef.current = currentIndex;
@@ -608,7 +595,7 @@ export function CandidateInterviewPage() {
   );
 
   // [NEW] Visible Questions Filter
-  const visibleQuestions = useMemo(() =>
+  const visibleQuestions = useMemo(() => 
     questions.filter(q => !hiddenQuestionIds.has(q.id)),
     [questions, hiddenQuestionIds]
   );
@@ -672,34 +659,34 @@ export function CandidateInterviewPage() {
     // We need to find the NEXT visible question
     // If we are at index N (raw), and N is hidden, we keep going.
     // But basic 'next' logic:
-
+    
     // Find current question in visible list
     if (currentVisualIndex === -1 || currentVisualIndex >= visibleQuestions.length - 1) {
-      console.warn('Attempted to navigate past last visible question');
-      return;
+        console.warn('Attempted to navigate past last visible question');
+        return;
     }
 
     const nextVisibleQ = visibleQuestions[currentVisualIndex + 1];
     const nextRawIndex = questions.findIndex(q => q.id === nextVisibleQ.id);
 
     if (nextRawIndex !== -1) {
-      setCurrentIndex(nextRawIndex);
-      setCodeOutput(null);
+        setCurrentIndex(nextRawIndex);
+        setCodeOutput(null);
     }
   }, [currentVisualIndex, visibleQuestions, questions]);
 
   const handlePrev = useCallback(() => {
     if (currentVisualIndex <= 0) {
-      console.warn('Attempted to navigate before first question');
-      return;
+        console.warn('Attempted to navigate before first question');
+        return;
     }
 
     const prevVisibleQ = visibleQuestions[currentVisualIndex - 1];
     const prevRawIndex = questions.findIndex(q => q.id === prevVisibleQ.id);
 
     if (prevRawIndex !== -1) {
-      setCurrentIndex(prevRawIndex);
-      setCodeOutput(null);
+        setCurrentIndex(prevRawIndex);
+        setCodeOutput(null);
     }
   }, [currentVisualIndex, visibleQuestions, questions]);
 
@@ -719,7 +706,7 @@ export function CandidateInterviewPage() {
         timeMs?: number;
         memoryMb?: number;
       }>(`${API_BASE}/api/judge/submit`, {
-        interviewId,
+        interviewId, 
         questionId: currentQuestion.id,
         language: currentQuestion.language || "javascript",
         code: answers[currentQuestion.id]
@@ -832,13 +819,13 @@ export function CandidateInterviewPage() {
       {visibleQuestions.map((q, visIndex) => {
         // Find the original index for this question
         const rawIndex = questions.findIndex(rawQ => rawQ.id === q.id);
-
+        
         const isCurrent = rawIndex === currentIndex;
         const isAnswered = answeredQuestions.has(rawIndex);
 
         return (
           <button
-            key={`question-${q.id}`}
+            key={`question-${q.id}`} 
             className={`question-list__item ${isCurrent ? 'question-list__item--active' : ''
               } ${isAnswered ? 'question-list__item--answered' : ''
               }`}
@@ -1112,7 +1099,7 @@ export function CandidateInterviewPage() {
                         <AudioVisualizerCard
                           key={currentQuestion?.id || `idx-${currentIndex}`}
                           variant="default"
-                          showControls={!isProcessing}
+                          showControls={!isProcessing} 
                           accentColor="#0071e3"
                           interviewId={interviewId}
                           questionId={currentQuestion?.id}
@@ -1127,17 +1114,17 @@ export function CandidateInterviewPage() {
                           }}
                           onUploadComplete={() => {
                             console.log("Upload complete, initiating poll for follow-up...");
-                            setIsProcessing(true);
+                            setIsProcessing(true); 
                           }}
                         />
 
                         {/* Processing / Completion State */}
                         {isProcessing ? (
-                          <div className="apple-audio-complete apple-audio-complete--processing">
-                            <div className="apple-spinner" />
-                            <h4 className="apple-audio-complete__title">Processing Response...</h4>
-                            <p className="apple-audio-complete__duration">Please wait while we analyze your answer</p>
-                          </div>
+                           <div className="apple-audio-complete apple-audio-complete--processing">
+                              <div className="apple-spinner" />
+                              <h4 className="apple-audio-complete__title">Processing Response...</h4>
+                              <p className="apple-audio-complete__duration">Please wait while we analyze your answer</p>
+                           </div>
                         ) : answeredQuestions.has(currentIndex) && (
                           <div className="apple-audio-complete">
                             <div className="apple-audio-complete__icon">
@@ -1245,22 +1232,22 @@ export function CandidateInterviewPage() {
                       }
 
                       return visibleIndices.map((visualIdx) => {
-                        const q = visibleQuestions[visualIdx];
-                        const rawIdx = questions.findIndex(rawQ => rawQ.id === q.id);
-                        const isAnswered = answeredQuestions.has(rawIdx);
+                         const q = visibleQuestions[visualIdx];
+                         const rawIdx = questions.findIndex(rawQ => rawQ.id === q.id);
+                         const isAnswered = answeredQuestions.has(rawIdx);
 
-                        return (
-                          <button
-                            key={`dot-${visualIdx}-${q.id}`}
-                            className={`apple-dot ${visualIdx === currentVisualIndex ? 'apple-dot--active' : ''
-                              } ${isAnswered ? 'apple-dot--answered' : ''
-                              }`}
-                            onClick={() => !isProcessing && handleQuestionSelect(rawIdx)}
-                            aria-label={`Go to question ${visualIdx + 1}`}
-                            aria-current={visualIdx === currentVisualIndex ? 'step' : undefined}
-                            disabled={isProcessing}
-                          />
-                        );
+                         return (
+                            <button
+                              key={`dot-${visualIdx}-${q.id}`}
+                              className={`apple-dot ${visualIdx === currentVisualIndex ? 'apple-dot--active' : ''
+                                } ${isAnswered ? 'apple-dot--answered' : ''
+                                }`}
+                              onClick={() => !isProcessing && handleQuestionSelect(rawIdx)}
+                              aria-label={`Go to question ${visualIdx + 1}`}
+                              aria-current={visualIdx === currentVisualIndex ? 'step' : undefined}
+                              disabled={isProcessing}
+                            />
+                         );
                       });
                     })()}
                   </div>

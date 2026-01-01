@@ -3,5 +3,3 @@ opencv-python-headless
 requests
 pytesseract
 pdf2image
-edge-tts
-asyncio
