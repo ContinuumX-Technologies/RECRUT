@@ -1,5 +1,7 @@
 import OpenAI from "openai";
 import { v4 as uuidv4 } from "uuid"; // [ADD]: Import UUID generator
+import { PythonShell } from 'python-shell';
+import path from 'path';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
@@ -162,4 +164,42 @@ export async function generateContextAwareCodingQuestion(transcript: string, con
         console.error("❌ AI PARSE ERROR:", raw);
         throw new Error("Invalid JSON returned from OpenAI during contextual generation");
     }
+}
+
+/**
+ * [UPDATED] Generates human-like audio using free Edge-TTS via Python
+ */
+export async function generateSpeech(text: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        const scriptPath = path.join(__dirname, '../../python/tts.py');
+        
+        const pyshell = new PythonShell(scriptPath, {
+            mode: 'binary', // Important: We expect binary audio data back
+            args: [text]
+        });
+
+        const chunks: Buffer[] = [];
+
+        pyshell.stdout.on('data', (chunk) => {
+            chunks.push(chunk);
+        });
+
+        pyshell.stderr.on('data', (err) => {
+            console.error('TTS Python Error:', err);
+        });
+
+        pyshell.end((err) => {
+            if (err) {
+                console.error("❌ Edge-TTS Failed:", err);
+                reject(new Error("Failed to generate speech"));
+            } else {
+                const completeBuffer = Buffer.concat(chunks);
+                if (completeBuffer.length === 0) {
+                    reject(new Error("No audio data received"));
+                } else {
+                    resolve(completeBuffer);
+                }
+            }
+        });
+    });
 }
