@@ -3,166 +3,240 @@ import { IncomingMessage } from "http";
 import OpenAI from "openai";
 import { prisma } from "../lib/prisma";
 import { generateContextAwareCodingQuestion } from "../services/openai.service";
+import { streamHumeTTS } from "../ws/humeTTS.ws";
 
-// We'll use a local instance for the "Decision" logic
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// =====================================================
+// OpenAI client (decision logic)
+// =====================================================
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
+// =====================================================
+// Realtime Interview WebSocket
+// =====================================================
 export function setupRealtimeInterviewWSS(server: any) {
-  const wss = new WebSocket.Server({ server, path: "/ws/realtime" });
+  const wss = new WebSocket.Server({
+    server,
+    path: "/ws/realtime",
+  });
 
   wss.on("connection", async (client: WebSocket, req: IncomingMessage) => {
-    console.log("🎙️ Frontend connected to Realtime WS");
+    console.log("🎙️ Frontend connected to Realtime WS:", req.url);
 
-    // 1. EXTRACT INTERVIEW ID
+    // -------------------------------------------------
+    // 1️⃣ Extract interviewId
+    // -------------------------------------------------
     const url = new URL(req.url || "", `http://${req.headers.host}`);
     const interviewId = url.searchParams.get("interviewId");
 
     if (!interviewId) {
-      console.error("❌ No interviewId provided in WS connection");
+      console.warn("⚠️ WS connection ignored (missing interviewId)");
       client.close();
       return;
     }
 
+    console.log("✅ Realtime interview session:", interviewId);
+
+    // -------------------------------------------------
+    // 2️⃣ Connect to OpenAI Realtime
+    // -------------------------------------------------
     const openaiWS = new WebSocket(
       "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview",
       {
         headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-          "OpenAI-Beta": "realtime=v1"
-        }
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          "OpenAI-Beta": "realtime=v1",
+        },
       }
     );
 
     openaiWS.on("open", () => {
       console.log("🤖 Connected to OpenAI Realtime");
-      
-      // Ensure we get transcriptions
-      openaiWS.send(JSON.stringify({
-        type: "session.update",
-        session: {
-          input_audio_transcription: { model: "whisper-1" }
-        }
-      }));
+
+      // Enable transcription
+      openaiWS.send(
+        JSON.stringify({
+          type: "session.update",
+          session: {
+            input_audio_transcription: { model: "whisper-1" },
+          },
+        })
+      );
     });
 
-    // 🎧 AUDIO FROM BROWSER → OPENAI
+    // -------------------------------------------------
+    // 3️⃣ Browser Audio → OpenAI Realtime
+    // -------------------------------------------------
     client.on("message", (data) => {
       if (openaiWS.readyState !== WebSocket.OPEN) return;
-      openaiWS.send(JSON.stringify({
-        type: "input_audio_buffer.append",
-        audio: Buffer.from(data as Buffer).toString("base64")
-      }));
+
+      openaiWS.send(
+        JSON.stringify({
+          type: "input_audio_buffer.append",
+          audio: Buffer.from(data as Buffer).toString("base64"),
+        })
+      );
     });
 
-    // 🧠 OPENAI EVENTS → BACKEND LOGIC
+    // -------------------------------------------------
+    // 4️⃣ OpenAI Events → Decision + Follow-up
+    // -------------------------------------------------
     openaiWS.on("message", async (msg) => {
       const event = JSON.parse(msg.toString());
 
-      // 2. INTERCEPT TRANSCRIPTION
-      if (event.type === "conversation.item.input_audio_transcription.completed") {
-        const transcript = event.transcript;
+      if (
+        event.type ===
+        "conversation.item.input_audio_transcription.completed"
+      ) {
+        const transcript: string = event.transcript;
         console.log(`🎤 User Transcript: "${transcript}"`);
 
-        if (transcript && transcript.trim().length > 10) {
-          try {
-            console.log("🧠 Analyzing transcript for follow-up type...");
-            
-            // 3. DECISION STEP: Code vs. Conversation?
-            // We ask a fast model to decide the next best step
-            const decision = await analyzeFollowUpNeeds(transcript);
-            
-            let newQuestion;
+        if (!transcript || transcript.trim().length < 10) return;
 
-            if (decision.type === 'code') {
-               console.log("👉 Decision: Generate CODING Challenge");
-               newQuestion = await generateContextAwareCodingQuestion(transcript);
-            } else {
-               console.log("👉 Decision: Generate CONVERSATIONAL Follow-up");
-               // Create a standard text/voice question manually
-               newQuestion = {
-                  id: `ai-followup-${Date.now()}`,
-                  text: decision.suggestedText || "Could you elaborate on that?",
-                  type: 'audio', // 'audio' type means user speaks back
-                  durationSec: 60,
-                  generatedReason: "Conversational Follow-up"
-               };
-            }
+        try {
+          // -------------------------------------------------
+          // 5️⃣ Decide follow-up type
+          // -------------------------------------------------
+          const decision = await analyzeFollowUpNeeds(transcript);
 
-            // 4. SAVE TO DATABASE
-            const interview = await prisma.interview.findUnique({
+          let newQuestion: any;
+
+          if (decision.type === "code") {
+            console.log("👉 Decision: CODING follow-up");
+            newQuestion = await generateContextAwareCodingQuestion(transcript);
+          } else {
+            console.log("👉 Decision: CONVERSATIONAL follow-up");
+            newQuestion = {
+              id: `ai-followup-${Date.now()}`,
+              text:
+                decision.suggestedText ||
+                "Could you elaborate on that?",
+              type: "audio",
+              durationSec: 60,
+              generatedReason: "Conversational Follow-up",
+            };
+          }
+
+          // -------------------------------------------------
+          // 6️⃣ Save to database
+          // -------------------------------------------------
+          const interview = await prisma.interview.findUnique({
+            where: { id: interviewId },
+            select: { customConfig: true, template: true },
+          });
+
+          if (interview) {
+            const currentConfig =
+              (interview.customConfig as any) ||
+              (interview.template?.config as any) ||
+              {};
+
+            const updatedQuestions = [
+              ...(currentConfig.questions || []),
+              newQuestion,
+            ];
+
+            await prisma.interview.update({
               where: { id: interviewId },
-              select: { customConfig: true, template: true }
+              data: {
+                customConfig: {
+                  ...currentConfig,
+                  questions: updatedQuestions,
+                },
+              },
             });
 
-            if (interview) {
-              const currentConfig = (interview.customConfig as any) || (interview.template?.config as any) || {};
-              const currentQuestions = currentConfig.questions || [];
+            console.log("✅ Database updated via Realtime");
 
-              // Prevent spamming: only add if we haven't just added one (optional logic)
-              const updatedQuestions = [...currentQuestions, newQuestion];
-              
-              await prisma.interview.update({
-                where: { id: interviewId },
-                data: {
-                  customConfig: {
-                    ...currentConfig,
-                    questions: updatedQuestions
-                  }
-                }
-              });
-              
-              console.log("✅ Database updated via Realtime!");
-              client.send(JSON.stringify({ type: "question_generated", question: newQuestion }));
-            }
-
-          } catch (err) {
-            console.error("❌ Error processing answer:", err);
+            // Notify frontend
+            client.send(
+              JSON.stringify({
+                type: "question_generated",
+                question: newQuestion,
+              })
+            );
           }
+
+          // -------------------------------------------------
+          // 7️⃣ 🔊 Stream Hume TTS (WebSocket → frontend)
+          // -------------------------------------------------
+          streamHumeTTS(
+            newQuestion.text,
+            (audioChunk) => {
+              client.send(
+                JSON.stringify({
+                  type: "tts_audio_chunk",
+                  questionId: newQuestion.id,
+                  audio: audioChunk.toString("base64"),
+                })
+              );
+            },
+            {
+              voice: "rajesh",
+              instantMode: true,
+            }
+          ).catch((err) => {
+            console.error("❌ Hume TTS stream failed:", err);
+          });
+
+        } catch (err) {
+          console.error("❌ Error processing transcript:", err);
         }
       }
 
-      // Relay back to client
+      // Optional: relay OpenAI events to frontend
       client.send(msg.toString());
     });
 
     client.on("close", () => {
+      console.log("🔌 Realtime WS closed:", interviewId);
       openaiWS.close();
     });
   });
 }
 
-/**
- * Helper to determine if the candidate's answer triggers a Coding Question
- * or just a standard conversational follow-up.
- */
-async function analyzeFollowUpNeeds(transcript: string): Promise<{ type: 'code' | 'conversation', suggestedText?: string }> {
+// =====================================================
+// Decision Helper
+// =====================================================
+async function analyzeFollowUpNeeds(
+  transcript: string
+): Promise<{
+  type: "code" | "conversation";
+  suggestedText?: string;
+}> {
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Fast & Cheap
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
           content: `
-          You are an Interview Director. Analyze the candidate's response.
-          
-          DECISION RULES:
-          1. If the candidate mentions specific data structures (Arrays, Trees, HashMaps) or algorithms (DFS, BFS, Sorting) in a way that implies they should DEMONSTRATE it -> Return "code".
-          2. If the candidate is just talking about soft skills, leadership, or high-level concepts -> Return "conversation".
-          3. Also provide a specific follow-up question text.
+You are an Interview Director.
 
-          Return JSON: { "type": "code" | "conversation", "suggestedText": "..." }
-          `
+Rules:
+1. If the candidate mentions data structures or algorithms AND should demonstrate them → "code".
+2. Otherwise → "conversation".
+3. Provide a concise follow-up question.
+
+Return JSON:
+{ "type": "code" | "conversation", "suggestedText": "..." }
+          `,
         },
-        { role: "user", content: transcript }
+        { role: "user", content: transcript },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.3
+      temperature: 0.3,
     });
 
     const raw = completion.choices[0].message.content;
-    return raw ? JSON.parse(raw) : { type: 'conversation', suggestedText: "Tell me more." };
-  } catch (e) {
-    console.warn("⚠️ Decision analysis failed, defaulting to conversation.");
-    return { type: 'conversation', suggestedText: "Could you elaborate?" };
+    return raw
+      ? JSON.parse(raw)
+      : { type: "conversation", suggestedText: "Tell me more." };
+  } catch {
+    return {
+      type: "conversation",
+      suggestedText: "Could you elaborate?",
+    };
   }
 }
