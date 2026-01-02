@@ -279,6 +279,77 @@ export function CandidateInterviewPage() {
   const prevIdRef = useRef<string | undefined>(undefined);
 
   // ==========================================
+  // REALTIME AUDIO REFS
+  // ==========================================
+  const realtimeWSRef = useRef<WebSocket | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+
+  function floatTo16BitPCM(float32Array: Float32Array) {
+    const buffer = new ArrayBuffer(float32Array.length * 2);
+    const view = new DataView(buffer);
+    let offset = 0;
+
+    for (let i = 0; i < float32Array.length; i++, offset += 2) {
+      let s = Math.max(-1, Math.min(1, float32Array[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+    return buffer;
+  }
+
+  const startRealtimeAudio = async () => {
+    realtimeWSRef.current = new WebSocket(
+      `${API_BASE.replace("http", "ws")}/ws/realtime`
+    );
+
+    realtimeWSRef.current.binaryType = "arraybuffer";
+
+    realtimeWSRef.current.onopen = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+
+      audioContextRef.current = new AudioContext({ sampleRate: 16000 });
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+
+      processorRef.current =
+        audioContextRef.current.createScriptProcessor(4096, 1, 1);
+
+      source.connect(processorRef.current);
+      processorRef.current.connect(audioContextRef.current.destination);
+
+      processorRef.current.onaudioprocess = (e) => {
+        if (
+          !realtimeWSRef.current ||
+          realtimeWSRef.current.readyState !== WebSocket.OPEN
+        ) return;
+
+        const pcm = floatTo16BitPCM(
+          e.inputBuffer.getChannelData(0)
+        );
+        realtimeWSRef.current.send(pcm);
+      };
+    };
+  };
+
+  const stopRealtimeAudio = () => {
+    if (realtimeWSRef.current?.readyState === WebSocket.OPEN) {
+      realtimeWSRef.current.send(
+        JSON.stringify({ type: "input_audio_buffer.commit" })
+      );
+    }
+
+    processorRef.current?.disconnect();
+    audioContextRef.current?.close();
+    micStreamRef.current?.getTracks().forEach(t => t.stop());
+    realtimeWSRef.current?.close();
+
+    // [DISABLED] Do not block UI with processing state
+    // setIsProcessing(true); 
+  };
+
+
+  // ==========================================
   // HOOKS
   // ==========================================
 
@@ -1139,15 +1210,19 @@ export function CandidateInterviewPage() {
                           silenceDetection={true}
                           silenceDurationMs={2500}
                           silenceThreshold={0.05}
-                          onRecordingStart={() => console.log('Recording started')}
+                          onRecordingStart={() => {
+                            console.log("Realtime recording started");
+                            startRealtimeAudio();
+                          }}
                           onRecordingStop={(duration) => {
                             console.log('Recording stopped locally, duration:', duration);
+                            stopRealtimeAudio();
                             setAnsweredQuestions(prev => new Set(prev).add(currentIndex));
                             handleAnswerChange(`audio_response_${duration}s`);
                           }}
                           onUploadComplete={() => {
-                            console.log("Upload complete, initiating poll for follow-up...");
-                            setIsProcessing(true);
+                            console.log("Upload complete. Path B disabled, skipping poll.");
+                            // [DISABLED PATH B] Don't trigger processing state
                           }}
                         />
 

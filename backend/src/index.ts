@@ -10,6 +10,7 @@ import { runYoloAnalysis } from './services/yoloService';
 import { AIShadowService } from './services/aiShadowService'; // [FIX]: Import the service
 import { ResumeService } from './services/resume.service';
 import { synthesizeRajeshVoice } from './services/humeVoice.service';
+import { setupRealtimeInterviewWSS } from "./ws/realtimeInterview.ws";
 import { prisma } from './lib/prisma';
 import {
   hashPassword,
@@ -365,7 +366,9 @@ app.post('/api/interviews/:id/audio', upload.single('audio'), async (req: Reques
   // Respond first to keep UI snappy
   res.json({ ok: true, path: relPath, id: record.id });
 
-  // [FIX] Trigger AI Shadow Analysis in background
+  // [DISABLED PATH B] 
+  // We are using Realtime (Path A) now, so we disable the file-based Shadow analysis.
+  /*
   AIShadowService.processAnswer(id, record.id, req.file.path)
     .then((analysis) => {
       if (analysis) {
@@ -375,9 +378,8 @@ app.post('/api/interviews/:id/audio', upload.single('audio'), async (req: Reques
     .catch(err => {
       console.error(`[AIShadow] Error processing ${record.id}:`, err);
     });
-}
-);
-
+  */
+});
 // ======================
 // Admin interview details (for review)
 // ======================
@@ -1016,6 +1018,8 @@ app.post('/api/voice/synthesize', async (req: Request, res: Response) => {
 // ======================
 // Start server
 // ======================
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Backend listening on http://localhost:${PORT}`);
 });
+
+setupRealtimeInterviewWSS(server);

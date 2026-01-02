@@ -129,6 +129,8 @@ export default function AudioVisualizerCard({
 
     // Helper to upload audio
     const uploadAudio = async (blob: Blob, mimeType: string) => {
+        // [DISABLED] Stop upload to backend as requested
+        /*
         if (!interviewId) return;
 
         setIsUploading(true);
@@ -157,6 +159,10 @@ export default function AudioVisualizerCard({
         } finally {
             setIsUploading(false);
         }
+        */
+       
+       // Call this to satisfy any parent cleanup logic, but no upload happens.
+       onUploadComplete?.(); 
     };
 
     // Start recording with Noise Gate
