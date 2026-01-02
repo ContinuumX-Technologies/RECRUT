@@ -300,7 +300,7 @@ export function CandidateInterviewPage() {
 
   const startRealtimeAudio = async () => {
     realtimeWSRef.current = new WebSocket(
-      `${API_BASE.replace("http", "ws")}/ws/realtime`
+      `${API_BASE.replace("http", "ws")}/ws/realtime?interviewId=${interviewId}`
     );
 
     realtimeWSRef.current.binaryType = "arraybuffer";
