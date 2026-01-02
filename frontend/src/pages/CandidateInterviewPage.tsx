@@ -1222,7 +1222,7 @@ export function CandidateInterviewPage() {
                           }}
                           onUploadComplete={() => {
                             console.log("Upload complete. Path B disabled, skipping poll.");
-                            // [DISABLED PATH B] Don't trigger processing state
+                            setIsProcessing(true);                     
                           }}
                         />
 
