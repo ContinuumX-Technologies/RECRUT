@@ -286,6 +286,70 @@ export function CandidateInterviewPage() {
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
 
+  useEffect(() => {
+    if (!interviewId) return;
+
+    console.log("🔄 [WS] Initializing Realtime Connection...");
+
+    const wsBase = API_BASE.replace(/^http/, 'ws');
+    const ws = new WebSocket(`${wsBase}/ws/realtime?interviewId=${interviewId}`);
+    ws.binaryType = "arraybuffer";
+
+    ws.onopen = () => {
+      console.log("✅ [WS] Connected to Realtime Backend");
+      setConnectionStatus('connected');
+    };
+
+    ws.onclose = (event) => {
+      console.log(`🔌 [WS] Disconnected (Code: ${event.code})`);
+      setConnectionStatus('disconnected');
+    };
+
+    ws.onerror = (err) => {
+      // Only log errors if the socket is not closing/closed (avoids noise during cleanup)
+      if (ws.readyState !== WebSocket.CLOSED && ws.readyState !== WebSocket.CLOSING) {
+        console.error("❌ [WS] Error:", err);
+      }
+    };
+
+    ws.onmessage = async (event) => {
+      if (typeof event.data === 'string') {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'question_generated') {
+            console.log("🤖 [AI] New question received");
+            await fetchConfig(true);
+            setIsProcessing(false);
+          }
+        } catch (e) {
+          console.error("Error parsing WS message:", e);
+        }
+      }
+    };
+
+    realtimeWSRef.current = ws;
+
+    // ✅ ROBUST CLEANUP
+    return () => {
+      console.log("🧹 [WS] Cleaning up connection");
+      
+      // 1. Remove listeners to prevent "WebSocket is closed" errors from firing
+      ws.onerror = null;
+      ws.onclose = null;
+      ws.onmessage = null;
+
+      // 2. Close the socket explicitly to prevent memory leaks
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
+
+      // 3. Clear the ref
+      if (realtimeWSRef.current === ws) {
+        realtimeWSRef.current = null;
+      }
+    };
+  }, [interviewId]);
+
   function floatTo16BitPCM(float32Array: Float32Array) {
     const buffer = new ArrayBuffer(float32Array.length * 2);
     const view = new DataView(buffer);
@@ -299,54 +363,54 @@ export function CandidateInterviewPage() {
   }
 
   const startRealtimeAudio = async () => {
-    realtimeWSRef.current = new WebSocket(
-      `${API_BASE.replace("http", "ws")}/ws/realtime?interviewId=${interviewId}`
-    );
-
-    realtimeWSRef.current.binaryType = "arraybuffer";
-
-    realtimeWSRef.current.onopen = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStreamRef.current = stream;
-
-      audioContextRef.current = new AudioContext({ sampleRate: 16000 });
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-
-      processorRef.current =
-        audioContextRef.current.createScriptProcessor(4096, 1, 1);
-
-      source.connect(processorRef.current);
-      processorRef.current.connect(audioContextRef.current.destination);
-
-      processorRef.current.onaudioprocess = (e) => {
-        if (
-          !realtimeWSRef.current ||
-          realtimeWSRef.current.readyState !== WebSocket.OPEN
-        ) return;
-
-        const pcm = floatTo16BitPCM(
-          e.inputBuffer.getChannelData(0)
-        );
-        realtimeWSRef.current.send(pcm);
-      };
+    if (!realtimeWSRef.current || realtimeWSRef.current.readyState !== WebSocket.OPEN) {
+      console.warn("Realtime WS not ready");
+      return;
+    }
+  
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micStreamRef.current = stream;
+  
+    audioContextRef.current = new AudioContext({ sampleRate: 16000 });
+    const source = audioContextRef.current.createMediaStreamSource(stream);
+  
+    processorRef.current =
+      audioContextRef.current.createScriptProcessor(4096, 1, 1);
+  
+    source.connect(processorRef.current);
+    processorRef.current.connect(audioContextRef.current.destination);
+  
+    processorRef.current.onaudioprocess = (e) => {
+      if (
+        !realtimeWSRef.current ||
+        realtimeWSRef.current.readyState !== WebSocket.OPEN
+      ) return;
+  
+      const pcm = floatTo16BitPCM(
+        e.inputBuffer.getChannelData(0)
+      );
+  
+      // ✅ SEND RAW PCM ONLY
+      realtimeWSRef.current.send(pcm);
     };
   };
+  
 
   const stopRealtimeAudio = () => {
-    if (realtimeWSRef.current?.readyState === WebSocket.OPEN) {
-      realtimeWSRef.current.send(
-        JSON.stringify({ type: "input_audio_buffer.commit" })
-      );
-    }
-
     processorRef.current?.disconnect();
     audioContextRef.current?.close();
     micStreamRef.current?.getTracks().forEach(t => t.stop());
-    realtimeWSRef.current?.close();
-
-    // [DISABLED] Do not block UI with processing state
-    // setIsProcessing(true); 
+  
+    processorRef.current = null;
+    audioContextRef.current = null;
+    micStreamRef.current = null;
+  
+    // ❌ DO NOT CLOSE WS
+    // ❌ DO NOT SEND input_audio_buffer.commit
+  
+    console.log("🎙️ Recording stopped (WS still open)");
   };
+  
 
 
   // ==========================================
