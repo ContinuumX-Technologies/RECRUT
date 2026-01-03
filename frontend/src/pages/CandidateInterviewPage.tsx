@@ -319,7 +319,6 @@ export function CandidateInterviewPage() {
           if (msg.type === 'question_generated') {
             console.log("🤖 [AI] New question received");
             await fetchConfig(true);
-            setIsProcessing(false);
           }
         } catch (e) {
           console.error("Error parsing WS message:", e);
