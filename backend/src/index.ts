@@ -7,7 +7,6 @@ import { json, urlencoded } from 'express';
 import multer from 'multer';
 import { MediaRecord } from '@prisma/client';
 import { runYoloAnalysis } from './services/yoloService';
-import { AIShadowService } from './services/aiShadowService'; // [FIX]: Import the service
 import { ResumeService } from './services/resume.service';
 import { synthesizeRajeshVoice } from './services/humeVoice.service';
 import { setupRealtimeInterviewWSS } from "./ws/realtimeInterview.ws";

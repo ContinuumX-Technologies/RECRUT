@@ -405,10 +405,16 @@ export function CandidateInterviewPage() {
     audioContextRef.current = null;
     micStreamRef.current = null;
   
-    // ❌ DO NOT CLOSE WS
-    // ❌ DO NOT SEND input_audio_buffer.commit
+    // [FIX] Send explicit COMMIT signal to backend
+    // This tells OpenAI we are done speaking and forces a response.
+    if (realtimeWSRef.current && realtimeWSRef.current.readyState === WebSocket.OPEN) {
+        console.log("📨 [WS] Sending commit signal...");
+        realtimeWSRef.current.send(JSON.stringify({ type: "commit" }));
+    } else {
+        console.warn("⚠️ [WS] Socket not open, cannot send commit.");
+    }
   
-    console.log("🎙️ Recording stopped (WS still open)");
+    console.log("🎙️ Recording stopped (WS kept open for response)");
   };
   
 

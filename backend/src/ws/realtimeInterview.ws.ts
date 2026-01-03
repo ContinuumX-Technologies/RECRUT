@@ -69,17 +69,20 @@ export function setupRealtimeInterviewWSS(server: any) {
       console.log("🤖 [OPENAI] Realtime connected");
 
       try {
-        // ---- Session configuration FIRST ----
+        // ---- Session configuration ----
+        // ENABLE SERVER VAD
         openaiWS.send(
           JSON.stringify({
             type: "session.update",
             session: {
-              modalities: ["text", "audio"],
+              modalities: ["text"], // Text only (we use Hume for audio)
               input_audio_transcription: { model: "whisper-1" },
+              turn_detection: null,
               instructions: `
 You are a Senior Software Engineer conducting a live technical interview.
 
 Rules:
+- ALWAYS SPEAK IN ENGLISH.
 - Ask ONE concise spoken follow-up question
 - Focus on why, complexity, trade-offs, scalability
 - Never explain answers
@@ -96,7 +99,6 @@ Rules:
           console.log(
             `🚀 [AUDIO] Flushing ${audioQueue.length} buffered chunks`
           );
-
           for (const chunk of audioQueue) {
             openaiWS.send(
               JSON.stringify({
@@ -105,7 +107,6 @@ Rules:
               })
             );
           }
-
           audioQueue.length = 0;
         }
       } catch (err) {
@@ -124,10 +125,32 @@ Rules:
     });
 
     // =================================================
-    // 4️⃣ Browser Audio → OpenAI (buffer safe)
+    // 4️⃣ Browser Audio → OpenAI
     // =================================================
     client.on("message", (data) => {
       try {
+        // [FIX] Detect Control Signals (JSON) vs Audio (Buffer)
+        const strData = data.toString();
+        
+        // Check if it's a COMMIT signal from frontend
+        if (strData.startsWith("{") && strData.endsWith("}")) {
+            try {
+                const command = JSON.parse(strData);
+                if (command.type === "commit") {
+                    if (openaiReady && openaiWS.readyState === WebSocket.OPEN) {
+                        console.log("▶️ [WS] Received manual COMMIT signal");
+                        // Force commit and response generation
+                        openaiWS.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
+                        openaiWS.send(JSON.stringify({ type: "response.create" }));
+                    }
+                    return; // Stop processing this message
+                }
+            } catch (e) {
+                // Not valid JSON, proceed as audio
+            }
+        }
+
+        // Handle Audio Chunk
         const buffer = Buffer.from(data as Buffer);
 
         if (!openaiReady || openaiWS.readyState !== WebSocket.OPEN) {
@@ -147,131 +170,121 @@ Rules:
     });
 
     // =================================================
-    // 5️⃣ Periodic TURN COMMIT (CRITICAL)
-    // =================================================
-    const commitInterval = setInterval(() => {
-      if (openaiReady && openaiWS.readyState === WebSocket.OPEN) {
-        openaiWS.send(
-          JSON.stringify({ type: "input_audio_buffer.commit" })
-        );
-      }
-    }, 1200); // commit every ~1.2s
-
-    // =================================================
-    // 6️⃣ OpenAI → Events
+    // 5️⃣ OpenAI → Events
     // =================================================
     openaiWS.on("message", async (msg) => {
       let event: any;
-
       try {
         event = JSON.parse(msg.toString());
       } catch {
         return;
       }
+      
+      if (event.type === 'error') {
+          console.error("❌ [OPENAI ERROR]", event.error);
+      }
 
-      // -------------------------------
       // Transcript
-      // -------------------------------
-      if (
-        event.type ===
-        "conversation.item.input_audio_transcription.completed"
-      ) {
+      if (event.type === "conversation.item.input_audio_transcription.completed") {
         const transcript = event.transcript?.trim();
-        if (transcript && transcript.length >= 4) {
+        if (transcript) {
           console.log("🎤 [CANDIDATE]", transcript);
         }
       }
 
-      // -------------------------------
-      // AI follow-up question
-      // -------------------------------
-      if (event.type === "conversation.item.created") {
-        const questionText = event.item?.content?.[0]?.text;
-        if (!questionText) return;
+      // AI Response (Text Generation Done)
+      if (event.type === "response.done") {
+        const outputItem = event.response?.output?.[0];
 
-        console.log("🤖 [AI QUESTION]", questionText);
+        if (
+          outputItem?.type === "message" &&
+          outputItem?.role === "assistant" &&
+          outputItem?.content?.[0]?.type === "text"
+        ) {
+          const questionText = outputItem.content[0].text;
+          if (!questionText) return;
 
-        const newQuestion = {
-          id: `ai-followup-${Date.now()}`,
-          text: questionText,
-          type: "audio",
-          durationSec: 60,
-          generatedReason: "Realtime AI Interviewer",
-        };
+          console.log("🤖 [AI QUESTION]", questionText);
 
-        // ---- DB ----
-        try {
-          const interview = await prisma.interview.findUnique({
-            where: { id: interviewId! },
-            select: { customConfig: true, template: true },
-          });
+          const newQuestion = {
+            id: `ai-followup-${Date.now()}`,
+            text: questionText,
+            type: "audio",
+            durationSec: 60,
+            generatedReason: "Realtime AI Interviewer",
+          };
 
-          if (interview) {
-            const currentConfig =
-              (interview.customConfig as any) ||
-              (interview.template?.config as any) ||
-              {};
-
-            await prisma.interview.update({
+          // ---- DB Update ----
+          try {
+            const interview = await prisma.interview.findUnique({
               where: { id: interviewId! },
-              data: {
-                customConfig: {
-                  ...currentConfig,
-                  questions: [
-                    ...(currentConfig.questions || []),
-                    newQuestion,
-                  ],
-                },
-              },
+              select: { customConfig: true, template: true },
             });
+
+            if (interview) {
+              const currentConfig =
+                (interview.customConfig as any) ||
+                (interview.template?.config as any) ||
+                {};
+
+              await prisma.interview.update({
+                where: { id: interviewId! },
+                data: {
+                  customConfig: {
+                    ...currentConfig,
+                    questions: [
+                      ...(currentConfig.questions || []),
+                      newQuestion,
+                    ],
+                  },
+                },
+              });
+            }
+          } catch (err) {
+            console.error("❌ [DB] Update failed:", err);
           }
-        } catch (err) {
-          console.error("❌ [DB] Update failed:", err);
-        }
 
-        // ---- Frontend ----
-        try {
-          client.send(
-            JSON.stringify({
-              type: "question_generated",
-              question: newQuestion,
-            })
-          );
-        } catch {}
+          // ---- Frontend Notification ----
+          try {
+            client.send(
+              JSON.stringify({
+                type: "question_generated",
+                question: newQuestion,
+              })
+            );
+          } catch {}
 
-        // ---- TTS ----
-        try {
-          await streamHumeTTS(
-            questionText,
-            (chunk) => {
-              if (!frontendClosed) {
-                client.send(
-                  JSON.stringify({
-                    type: "tts_audio_chunk",
-                    questionId: newQuestion.id,
-                    audio: chunk.toString("base64"),
-                  })
-                );
-              }
-            },
-            { voice: "rajesh", instantMode: true }
-          );
-        } catch (err) {
-          console.error("❌ [TTS] Failed:", err);
+          // ---- TTS Streaming ----
+          try {
+            await streamHumeTTS(
+              questionText,
+              (chunk) => {
+                if (!frontendClosed) {
+                  client.send(
+                    JSON.stringify({
+                      type: "tts_audio_chunk",
+                      questionId: newQuestion.id,
+                      audio: chunk.toString("base64"),
+                    })
+                  );
+                }
+              },
+              { voice: "rajesh", instantMode: true }
+            );
+          } catch (err) {
+            console.error("❌ [TTS] Failed:", err);
+          }
         }
       }
     });
 
     // =================================================
-    // 7️⃣ Graceful shutdown
+    // 6️⃣ Graceful shutdown
     // =================================================
     client.on("close", () => {
       console.log("🔌 [WS] Frontend closed:", interviewId);
       frontendClosed = true;
 
-      clearInterval(commitInterval);
-
-      // Grace period to let OpenAI finish speaking
       setTimeout(() => {
         if (openaiWS.readyState === WebSocket.OPEN) {
           console.log("🧹 [OPENAI] Closing after grace period");
