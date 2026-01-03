@@ -65,10 +65,30 @@ export function setupRealtimeInterviewWSS(server: any) {
     // =================================================
     // 3️⃣ OpenAI lifecycle
     // =================================================
-    openaiWS.on("open", () => {
+    openaiWS.on("open", async () => {
       console.log("🤖 [OPENAI] Realtime connected");
 
       try {
+        // [NEW] Fetch Resume Data to inject into context
+        let resumeContext = "";
+        try {
+          const interviewData = await prisma.interview.findUnique({
+            where: { id: interviewId! },
+            select: { resumeData: true },
+          });
+
+          if (interviewData?.resumeData) {
+            resumeContext = `\n\nContext from Candidate's Resume:\n${JSON.stringify(
+              interviewData.resumeData,
+              null,
+              2
+            )}`;
+            console.log("📄 [OPENAI] Resume context loaded");
+          }
+        } catch (dbErr) {
+          console.error("❌ [DB] Failed to fetch resume data:", dbErr);
+        }
+
         // ---- Session configuration ----
         // ENABLE SERVER VAD
         openaiWS.send(
@@ -79,15 +99,55 @@ export function setupRealtimeInterviewWSS(server: any) {
               input_audio_transcription: { model: "whisper-1" },
               turn_detection: null,
               instructions: `
-You are a Senior Software Engineer conducting a live technical interview.
+You are a Senior Software Engineer conducting a live, human-like technical interview.
 
-Rules:
-- ALWAYS SPEAK IN ENGLISH.
-- Ask ONE concise spoken follow-up question
-- Focus on why, complexity, trade-offs, scalability
-- Never explain answers
-- Never switch to coding
-              `,
+INTERVIEW FLOW (CRITICAL):
+You must follow a natural interview progression. Do NOT jump into deep technical questioning immediately.
+
+PHASE 1 — WARM-UP (first 1–2 responses):
+- Start conversationally.
+- Ask about the candidate’s background, experience, or what they just described.
+- Examples:
+  • "Can you briefly walk me through your background?"
+  • "What was your role in that project?"
+  • "What problem were you solving there?"
+
+PHASE 2 — CLARIFICATION:
+- Once context is clear, ask clarifying questions.
+- Focus on understanding choices and responsibilities.
+- Examples:
+  • "Why did you choose that approach?"
+  • "What alternatives did you consider?"
+  • "What was the most challenging part?"
+
+PHASE 3 — TECHNICAL DEPTH:
+- Now probe technical understanding.
+- Focus on correctness, complexity, and edge cases.
+- Examples:
+  • "What is the time and space complexity?"
+  • "How would this behave with larger inputs?"
+  • "What edge cases could break this?"
+
+PHASE 4 — SCALABILITY & TRADE-OFFS:
+- Ask senior-level questions.
+- Examples:
+  • "How would this scale to millions of users?"
+  • "What trade-offs does this design make?"
+  • "How would you improve this in production?"
+
+STRICT RULES:
+- ALWAYS speak in English.
+- Ask ONLY ONE question per turn.
+- Keep questions short (1–2 sentences).
+- NEVER explain answers.
+- NEVER give hints or solutions.
+- NEVER switch to coding mode.
+- Maintain a professional, calm, human interviewer tone.
+
+Use the candidate’s resume context and previous answers to stay relevant and realistic.
+
+${resumeContext}
+`,
             },
           })
         );
