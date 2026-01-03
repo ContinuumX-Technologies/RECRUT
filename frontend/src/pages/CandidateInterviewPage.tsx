@@ -8,7 +8,7 @@ import { BiometricSetup } from '../components/BiometricSetup';
 import EmbeddedIDE from '../leetcode-ide/components/EmbeddedIDE';
 import './CandidateInterviewPage.css';
 import { MorphingParticleText } from '../components/MorphingParticleText';
-
+import { getRandomFiller } from '../lib/utils'; // [NEW] Import the filler utility
 // ===========================================
 // TYPES
 // ============================================
@@ -1291,7 +1291,9 @@ export function CandidateInterviewPage() {
                           }}
                           onUploadComplete={() => {
                             console.log("Upload complete. Path B disabled, skipping poll.");
-                            setIsProcessing(true);                     
+                            setIsProcessing(true);
+                            const filler = getRandomFiller();
+                            speakQuestion(filler);                     
                           }}
                         />
 
