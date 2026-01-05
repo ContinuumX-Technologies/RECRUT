@@ -25,6 +25,7 @@ import aiRoutes from "../src/routes/aiQuestion.routes";
 import judgeRoutes from "../src/routes/judge.routes";
 import verifyRoutes from "../src/routes/verify.routes";
 import previewRoutes from "../src/routes/preview.routes";
+import livekitRoutes from "../src/routes/livekit.routes";
 
 const execAsync = promisify(exec);
 
@@ -50,6 +51,7 @@ app.use("/api/judge", judgeRoutes);
 app.use("/api/admin", verifyRoutes);
 app.use("/api/admin", previewRoutes);
 app.use('/ai-voice', express.static(path.resolve('public/ai-voice')));
+app.use("/api", livekitRoutes);
 
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });

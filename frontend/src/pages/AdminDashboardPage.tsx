@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { LiveInterviewMonitor } from '../components/LiveInterviewMonitor';
 import './AdminDashboardPage.css';
+
 
 type CodingMode = 'leetcode' | 'ai';
 
@@ -95,6 +97,12 @@ const Icons = {
     </svg>
   ),
   Briefcase: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  ),
+  Camera: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
       <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
@@ -265,7 +273,7 @@ const StatusBadge = ({ status }: { status: string }) => (
 
 export function AdminDashboardPage() {
   const { user, token, logout } = useAuth();
-  const [tab, setTab] = useState<'templates' | 'interviews'>('templates');
+  const [tab, setTab] = useState<'templates' | 'interviews' | 'live'>('templates');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [loading, setLoading] = useState({
@@ -710,6 +718,13 @@ export function AdminDashboardPage() {
               >
                 <Icons.Calendar />
                 <span>Interviews</span>
+              </button>
+              <button
+                className={`admin-nav__tab ${tab === 'live' ? 'admin-nav__tab--active' : ''}`}
+                onClick={() => setTab('live')}
+              >
+                <Icons.Camera /> {/* Assume Camera icon exists or reuse Eye */}
+                <span>Live Monitor</span>
               </button>
             </div>
           </div>
@@ -1534,6 +1549,19 @@ export function AdminDashboardPage() {
                 )}
               </section>
             </div>
+          )}
+
+          {tab === 'live' && (
+            <section className="admin-panel admin-panel--large">
+              <div className="admin-panel__header">
+                <h2 className="admin-panel__title">Live Control Room</h2>
+                <div className="admin-badge admin-badge--live">
+                  {interviews.filter(i => i.status === 'started' || i.status === 'scheduled').length} Active
+                </div>
+              </div>
+              {/* Filter for started/scheduled interviews */}
+              <LiveInterviewMonitor interviews={interviews.filter(i => i.status === 'scheduled' || i.status === 'started')} />
+            </section>
           )}
         </div>
       </main>

@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo, type JSX } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { LiveKitRoom, useLocalParticipant } from '@livekit/components-react';
+import '@livekit/components-styles';
 import AudioVisualizerCard from '../components/AudioVizualiser';
 import { ProctoredShell } from '../components/ProctoredShell';
 import { useProctorAlerts } from '../hooks/useProctorAlert';
@@ -8,7 +10,8 @@ import { BiometricSetup } from '../components/BiometricSetup';
 import EmbeddedIDE from '../leetcode-ide/components/EmbeddedIDE';
 import './CandidateInterviewPage.css';
 import { MorphingParticleText } from '../components/MorphingParticleText';
-import { getRandomFiller } from '../lib/utils'; // [NEW] Import the filler utility
+import { getRandomFiller } from '../lib/utils';
+
 // ===========================================
 // TYPES
 // ============================================
@@ -221,6 +224,21 @@ const ErrorScreen = ({
 );
 
 // ============================================
+// HELPER: RoomConnector
+// ============================================
+// Connects to LiveKit tracks automatically when the room connects
+const RoomConnector = () => {
+  const { localParticipant } = useLocalParticipant();
+  useEffect(() => {
+    if(localParticipant) {
+        localParticipant.setCameraEnabled(true);
+        localParticipant.setMicrophoneEnabled(true);
+    }
+  }, [localParticipant]);
+  return null;
+};
+
+// ============================================
 // MAIN COMPONENT
 // ============================================
 
@@ -254,6 +272,10 @@ export function CandidateInterviewPage() {
   } | null>(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // [NEW] LiveKit State
+  const [liveKitToken, setLiveKitToken] = useState<string | null>(null);
+  const [liveKitUrl, setLiveKitUrl] = useState<string | null>(null);
 
   // [NEW] Track hidden questions to maintain pagination count
   // Initialized from localStorage to persist hidden state across reloads
@@ -416,7 +438,40 @@ export function CandidateInterviewPage() {
     console.log("🎙️ Recording stopped (WS kept open for response)");
   };
   
+  // ==========================================
+  // HELPER: apiFetch (with Auth Fix)
+  // ==========================================
+  async function apiFetch<T>(url: string, body: any): Promise<T> {
+    // 1. Get Token from localStorage (handling AuthContext format)
+    let token = '';
+    const authData = localStorage.getItem('auth');
+    if (authData) {
+      try {
+        const parsed = JSON.parse(authData);
+        token = parsed.token;
+      } catch (e) { /* ignore parse error */ }
+    }
 
+    const headers: Record<string, string> = { 
+      "Content-Type": "application/json" 
+    };
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      throw new Error(`Request failed: ${res.status}`);
+    }
+
+    return res.json();
+  }
 
   // ==========================================
   // HOOKS
@@ -521,6 +576,51 @@ export function CandidateInterviewPage() {
   // ==========================================
   // EFFECTS
   // ==========================================
+  
+  // [NEW] Fetch LiveKit Token when config is ready (Updated with Auth)
+  useEffect(() => {
+    if (!interviewId || !config) return; 
+    
+    const fetchToken = async () => {
+      try {
+        // 1. Extract Token from LocalStorage
+        let token = '';
+        const authData = localStorage.getItem('auth');
+        if (authData) {
+            try {
+                const parsed = JSON.parse(authData);
+                token = parsed.token;
+            } catch(e) {}
+        }
+
+        const headers: Record<string, string> = { 
+            'Content-Type': 'application/json' 
+        };
+        
+        // 2. Add Authorization Header if token exists
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const res = await fetch(`${API_BASE}/api/livekit/token`, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({ 
+             room: interviewId, 
+             username: config.candidateName || 'Candidate', 
+             role: 'candidate' 
+          })
+        });
+
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        
+        const data = await res.json();
+        setLiveKitToken(data.token);
+        setLiveKitUrl(data.url);
+      } catch(e) { console.error("LiveKit connection failed", e); }
+    };
+    fetchToken();
+  }, [interviewId, config]);
 
   // [NEW] Persist hidden questions to localStorage
   useEffect(() => {
@@ -741,22 +841,6 @@ export function CandidateInterviewPage() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [setupComplete, isSubmitting]);
-
-
-
-  async function apiFetch<T>(url: string, body: any): Promise<T> {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      throw new Error(`Request failed: ${res.status}`);
-    }
-
-    return res.json();
-  }
 
   // ==========================================
   // MEMOIZED VALUES - Fixed to Support Hidden Questions
@@ -1038,7 +1122,7 @@ export function CandidateInterviewPage() {
   // RENDER CONDITIONS
   // ==========================================
 
-  if (loading) {
+  if (loading || (!liveKitToken || !liveKitUrl)) {
     return <LoadingScreen />;
   }
 
@@ -1060,629 +1144,639 @@ export function CandidateInterviewPage() {
   }
 
   // ==========================================
-  // MAIN RENDER
+  // MAIN RENDER (WRAPPED IN LIVEKIT)
   // ==========================================
 
   return (
-    <ProctoredShell interviewId={interviewId}>
-      <div className="apple-interview">
-        {/* ================================
-            NAVIGATION BAR
-            ================================ */}
-        <nav className="apple-nav">
-          <div className="apple-nav__container">
-            {/* Left */}
-            <div className="apple-nav__left">
-              <button
-                className="apple-nav__menu-btn"
-                onClick={() => setShowSidebar(!showSidebar)}
-                aria-label="Toggle question list"
-              >
-                <span className="apple-nav__menu-icon">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              </button>
+    <LiveKitRoom
+      serverUrl={liveKitUrl}
+      token={liveKitToken}
+      connect={true}
+      video={true}
+      audio={true}
+      data-lk-theme="default"
+    >
+      <RoomConnector />
+      <ProctoredShell interviewId={interviewId}>
+        <div className="apple-interview">
+          {/* ================================
+              NAVIGATION BAR
+              ================================ */}
+          <nav className="apple-nav">
+            <div className="apple-nav__container">
+              {/* Left */}
+              <div className="apple-nav__left">
+                <button
+                  className="apple-nav__menu-btn"
+                  onClick={() => setShowSidebar(!showSidebar)}
+                  aria-label="Toggle question list"
+                >
+                  <span className="apple-nav__menu-icon">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                </button>
 
-              <div className="apple-nav__brand">
-                <span className="apple-nav__logo">
-                  <Icons.Sparkles />
-                </span>
-                <span className="apple-nav__title">Interview</span>
+                <div className="apple-nav__brand">
+                  <span className="apple-nav__logo">
+                    <Icons.Sparkles />
+                  </span>
+                  <span className="apple-nav__title">Interview</span>
+                </div>
               </div>
-            </div>
 
-            {/* Center - Progress */}
-            <div className="apple-nav__center">
-              <div className="apple-progress">
-                <div className="apple-progress__bar">
-                  <div
-                    className="apple-progress__fill"
-                    style={{ width: `${progress}%` }}
+              {/* Center - Progress */}
+              <div className="apple-nav__center">
+                <div className="apple-progress">
+                  <div className="apple-progress__bar">
+                    <div
+                      className="apple-progress__fill"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <span className="apple-progress__text">
+                    {currentVisualIndex + 1} / {totalQuestions}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right */}
+              <div className="apple-nav__right">
+                <div className={`apple-status ${connectionStatus !== 'connected' ? 'apple-status--offline' : ''}`}>
+                  <span className="apple-status__icon">
+                    {connectionStatus === 'connected' ? <Icons.Signal /> : <Icons.SignalOff />}
+                  </span>
+                </div>
+
+                <div className="apple-status apple-status--recording">
+                  <span className="apple-status__dot" />
+                  <span className="apple-status__text">REC</span>
+                </div>
+
+                <div className="apple-nav__camera">
+                  <video
+                    ref={mobileVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="apple-nav__camera-video"
                   />
                 </div>
-                <span className="apple-progress__text">
-                  {currentVisualIndex + 1} / {totalQuestions}
-                </span>
               </div>
             </div>
+          </nav>
 
-            {/* Right */}
-            <div className="apple-nav__right">
-              <div className={`apple-status ${connectionStatus !== 'connected' ? 'apple-status--offline' : ''}`}>
-                <span className="apple-status__icon">
-                  {connectionStatus === 'connected' ? <Icons.Signal /> : <Icons.SignalOff />}
-                </span>
+          {/* ================================
+              SIDEBAR (Mobile)
+              ================================ */}
+          <aside className={`apple-sidebar ${showSidebar ? 'apple-sidebar--open' : ''}`}>
+            <div className="apple-sidebar__backdrop" onClick={() => setShowSidebar(false)} />
+            <div className="apple-sidebar__content">
+              <div className="apple-sidebar__header">
+                <h2 className="apple-sidebar__title">Questions</h2>
+                <button
+                  className="apple-sidebar__close"
+                  onClick={() => setShowSidebar(false)}
+                >
+                  <Icons.X />
+                </button>
               </div>
+              {renderQuestionList()}
+            </div>
+          </aside>
 
-              <div className="apple-status apple-status--recording">
-                <span className="apple-status__dot" />
-                <span className="apple-status__text">REC</span>
+          {/* ================================
+              MAIN CONTENT
+              ================================ */}
+          <main className="apple-main">
+            {/* Alert Banner */}
+            {alert?.hasWarning && (
+              <div className="apple-alert">
+                <div className="apple-alert__icon">
+                  <Icons.Warning />
+                </div>
+                <div className="apple-alert__content">
+                  <strong>Proctoring Alert</strong>
+                  <p>{alert.message || 'Please ensure you follow the guidelines.'}</p>
+                </div>
+                <button className="apple-alert__dismiss">
+                  <Icons.X />
+                </button>
               </div>
+            )}
 
-              <div className="apple-nav__camera">
-                <video
-                  ref={mobileVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="apple-nav__camera-video"
-                />
+            {/* Content Container */}
+            <div className={`apple-content ${isCodeQuestion ? 'apple-content--code' : ''}`}>
+
+              {/* Left Panel - Question/Problem */}
+              <section className="apple-panel apple-panel--question">
+                <div className="apple-panel__scroll">
+                  {/* Question Header */}
+                  <header className="apple-question-header">
+                    <div className="apple-question-meta">
+                      <span className="apple-badge">
+                        {getQuestionTypeIcon(currentQuestion?.type || '')}
+                        <span>{currentQuestion?.type === 'mcq' ? 'Multiple Choice' :
+                          currentQuestion?.type === 'code' ? 'Coding' :
+                            currentQuestion?.type === 'audio' ? 'Voice' : 'Written'}</span>
+                      </span>
+                      {currentQuestion?.difficulty && (
+                        <span className={`apple-badge apple-badge--${currentQuestion.difficulty}`}>
+                          {currentQuestion.difficulty}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="apple-question-title-wrapper">
+                      <MorphingParticleText
+                        text={isProcessing ? "Analyzing Answer..." : (currentQuestion?.text || "Prepare Yourself")}
+                        className="morph-container"
+                      />
+                      <h1 className="sr-only">{currentQuestion?.text}</h1>
+                    </div>
+
+                    {currentQuestion?.durationSec && (
+                      <div className="apple-duration">
+                        <Icons.Clock />
+                        <span>Suggested time: {Math.floor(currentQuestion.durationSec / 60)} min</span>
+                      </div>
+                    )}
+                  </header>
+
+                  {/* Question Description (for code) */}
+                  {currentQuestion?.description && (
+                    <div className="apple-description">
+                      {currentQuestion.description.split('\n').map((line, i) => (
+                        <p key={i}>{line}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Test Cases (for code) */}
+                  {isCodeQuestion && currentQuestion?.testCases && (
+                    <div className="apple-examples">
+                      <h3>Examples</h3>
+                      {currentQuestion.testCases.map((tc, i) => (
+                        <div key={i} className="apple-example">
+                          <div className="apple-example__label">Example {i + 1}</div>
+                          <div className="apple-example__row">
+                            <span className="apple-example__key">Input:</span>
+                            <code className="apple-example__value">{tc.input}</code>
+                          </div>
+                          <div className="apple-example__row">
+                            <span className="apple-example__key">Output:</span>
+                            <code className="apple-example__value">{tc.output}</code>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Answer Section (for non-code) */}
+                  {!isCodeQuestion && (
+                    <div className="apple-answer">
+                      {currentQuestion?.type === 'audio' && (
+                        <div className="apple-audio-section">
+                          {/* Prompt Header */}
+                          <div className="apple-audio-prompt">
+                            <div className="apple-audio-prompt__icon">
+                              <Icons.Mic />
+                            </div>
+                            <h3 className="apple-audio-prompt__title">Voice Response</h3>
+                            <p className="apple-audio-prompt__subtitle">
+                              Take your time to think, then speak clearly into your microphone.
+                            </p>
+
+                            <div className="apple-audio-tips">
+                              <span className="apple-audio-tip">
+                                <Icons.Check /> Speak naturally
+                              </span>
+                              <span className="apple-audio-tip">
+                                <Icons.Check /> Stay on topic
+                              </span>
+                              <span className="apple-audio-tip">
+                                <Icons.Check /> No time limit
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Audio Component */}
+                          <AudioVisualizerCard
+                            key={currentQuestion?.id || `idx-${currentIndex}`}
+                            variant="default"
+                            showControls={!isProcessing}
+                            accentColor="#0071e3"
+                            interviewId={interviewId}
+                            questionId={currentQuestion?.id}
+                            silenceDetection={true}
+                            silenceDurationMs={2500}
+                            silenceThreshold={0.05}
+                            onRecordingStart={() => {
+                              console.log("Realtime recording started");
+                              startRealtimeAudio();
+                            }}
+                            onRecordingStop={(duration) => {
+                              console.log('Recording stopped locally, duration:', duration);
+                              stopRealtimeAudio();
+                              setAnsweredQuestions(prev => new Set(prev).add(currentIndex));
+                              handleAnswerChange(`audio_response_${duration}s`);
+                            }}
+                            onUploadComplete={() => {
+                              console.log("Upload complete. Path B disabled, skipping poll.");
+                              setIsProcessing(true);
+                              const filler = getRandomFiller();
+                              speakQuestion(filler);                     
+                            }}
+                          />
+
+                          {/* Processing / Completion State */}
+                          {isProcessing ? (
+                            <div className="apple-audio-complete apple-audio-complete--processing">
+                              <div className="apple-spinner" />
+                              <h4 className="apple-audio-complete__title">Processing Response...</h4>
+                              <p className="apple-audio-complete__duration">Please wait while we analyze your answer</p>
+                            </div>
+                          ) : answeredQuestions.has(currentIndex) && (
+                            <div className="apple-audio-complete">
+                              <div className="apple-audio-complete__icon">
+                                <Icons.Check />
+                              </div>
+                              <h4 className="apple-audio-complete__title">Response Recorded</h4>
+                              <p className="apple-audio-complete__duration">
+                                Your voice response has been saved
+                              </p>
+                              <div className="apple-audio-complete__actions">
+                                <button
+                                  className="apple-btn apple-btn--secondary"
+                                  onClick={() => {
+                                    setAnsweredQuestions(prev => {
+                                      const next = new Set(prev);
+                                      next.delete(currentIndex);
+                                      return next;
+                                    });
+                                    if (currentQuestion) {
+                                      setAnswers(prev => {
+                                        const next = { ...prev };
+                                        delete next[currentQuestion.id];
+                                        return next;
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Icons.RotateCcw />
+                                  <span>Re-record</span>
+                                </button>
+                                <button
+                                  className="apple-btn apple-btn--primary"
+                                  onClick={isLastQuestion ? handleFinish : handleNext}
+                                >
+                                  <span>{isLastQuestion ? 'Submit' : 'Continue'}</span>
+                                  <Icons.ChevronRight />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {currentQuestion?.type === 'text' && (
+                        <textarea
+                          value={answers[currentQuestion.id] || ''}
+                          onChange={(e) => handleAnswerChange(e.target.value)}
+                          className="apple-textarea"
+                          placeholder="Write your answer here..."
+                          rows={8}
+                        />
+                      )}
+
+                      {currentQuestion?.type === 'mcq' && (
+                        <div className="apple-mcq">
+                          {currentQuestion.options?.map((option, i) => {
+                            const isSelected = answers[currentQuestion.id] === option;
+                            return (
+                              <label
+                                key={i}
+                                className={`apple-mcq__option ${isSelected ? 'apple-mcq__option--selected' : ''}`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`mcq-${currentQuestion.id}`}
+                                  value={option}
+                                  checked={isSelected}
+                                  onChange={(e) => handleAnswerChange(e.target.value)}
+                                />
+                                <span className="apple-mcq__radio" />
+                                <span className="apple-mcq__text">{option}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Navigation */}
+                  <nav className="apple-nav-controls">
+                    <button
+                      onClick={handlePrev}
+                      disabled={currentVisualIndex === 0 || isProcessing}
+                      className="apple-btn apple-btn--secondary"
+                    >
+                      <Icons.ChevronLeft />
+                      <span>Previous</span>
+                    </button>
+
+                    {/* Dots Navigation - Uses Visual Index */}
+                    <div className="apple-dots">
+                      {(() => {
+                        const maxVisible = 5;
+                        const halfVisible = Math.floor(maxVisible / 2);
+                        let startIndex = Math.max(0, currentVisualIndex - halfVisible);
+                        let endIndex = Math.min(totalQuestions, startIndex + maxVisible);
+
+                        if (endIndex - startIndex < maxVisible) {
+                          startIndex = Math.max(0, endIndex - maxVisible);
+                        }
+
+                        const visibleIndices: number[] = [];
+                        for (let i = startIndex; i < endIndex; i++) {
+                          visibleIndices.push(i);
+                        }
+
+                        return visibleIndices.map((visualIdx) => {
+                          const q = visibleQuestions[visualIdx];
+                          const rawIdx = questions.findIndex(rawQ => rawQ.id === q.id);
+                          const isAnswered = answeredQuestions.has(rawIdx);
+
+                          return (
+                            <button
+                              key={`dot-${visualIdx}-${q.id}`}
+                              className={`apple-dot ${visualIdx === currentVisualIndex ? 'apple-dot--active' : ''
+                                } ${isAnswered ? 'apple-dot--answered' : ''
+                                }`}
+                              onClick={() => !isProcessing && handleQuestionSelect(rawIdx)}
+                              aria-label={`Go to question ${visualIdx + 1}`}
+                              aria-current={visualIdx === currentVisualIndex ? 'step' : undefined}
+                              disabled={isProcessing}
+                            />
+                          );
+                        });
+                      })()}
+                    </div>
+
+                    <button
+                      onClick={isLastQuestion ? handleFinish : handleNext}
+                      disabled={isProcessing}
+                      className={`apple-btn ${isLastQuestion ? 'apple-btn--accent' : 'apple-btn--primary'}`}
+                    >
+                      <span>{isLastQuestion ? 'Submit' : 'Next'}</span>
+                      {isLastQuestion ? <Icons.Send /> : <Icons.ChevronRight />}
+                    </button>
+                  </nav>
+                </div>
+              </section>
+
+              {/* Right Panel - Code Editor / Camera */}
+              {isCodeQuestion ? (
+                <section className="apple-panel apple-panel--editor">
+                  {/* Editor Header */}
+                  <header className="apple-editor-header">
+                    <div className="apple-editor-lang">
+                      <Icons.Code />
+                      <span>{currentQuestion?.language === 'python' ? 'Python 3' : 'JavaScript'}</span>
+                      <Icons.ChevronDown />
+                    </div>
+
+                    <div className="apple-editor-actions">
+                      <button
+                        className="apple-btn apple-btn--ghost"
+                        onClick={handleResetCode}
+                      >
+                        <Icons.RotateCcw />
+                        <span>Reset</span>
+                      </button>
+                      <button
+                        className="apple-btn apple-btn--secondary"
+                        onClick={handleRunCode}
+                      >
+                        <Icons.Play />
+                        <span>Run</span>
+                      </button>
+                      <button
+                        className="apple-btn apple-btn--primary"
+                        onClick={handleSubmit}
+                      >
+                        <Icons.Send />
+                        <span>Submit</span>
+                      </button>
+                    </div>
+                  </header>
+
+                  {/* Editor */}
+                  <div className="apple-editor-body">
+                    <EmbeddedIDE
+                      questionId={currentQuestion?.id || ''}
+                      language={currentQuestion?.language || 'javascript'}
+                      testCases={currentQuestion?.testCases || []}
+                      value={answers[currentQuestion?.id] ?? ''}
+                      onChange={handleAnswerChange}
+                    />
+                  </div>
+
+                  {/* Console */}
+                  <div className="apple-console">
+                    <header className="apple-console-header">
+                      <button
+                        className={`apple-console-tab ${consoleTab === 'testcase' ? 'apple-console-tab--active' : ''}`}
+                        onClick={() => setConsoleTab('testcase')}
+                      >
+                        Test Case
+                      </button>
+                      <button
+                        className={`apple-console-tab ${consoleTab === 'result' ? 'apple-console-tab--active' : ''}`}
+                        onClick={() => setConsoleTab('result')}
+                      >
+                        Result
+                      </button>
+                    </header>
+
+                    <div className="apple-console-body">
+                      {consoleTab === 'testcase' ? (
+                        <div className="apple-console-testcase">
+                          {currentQuestion?.testCases?.[0] && (
+                            <>
+                              <div className="apple-console-row">
+                                <label>Input</label>
+                                <code>{currentQuestion.testCases[0].input}</code>
+                              </div>
+                              <div className="apple-console-row">
+                                <label>Expected</label>
+                                <code>{currentQuestion.testCases[0].output}</code>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ) : codeOutput ? (
+                        <div className={`apple-console-result ${codeOutput.success ? 'apple-console-result--success' : 'apple-console-result--error'}`}>
+                          <div className="apple-console-result__header">
+                            {codeOutput.success ? <Icons.CheckCircle /> : <Icons.XCircle />}
+                            <span>{codeOutput.success ? 'Accepted' : 'Wrong Answer'}</span>
+                            {codeOutput.success && (
+                              <div className="apple-console-result__stats">
+                                <span>{codeOutput.runtime}</span>
+                                <span>{codeOutput.memory}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="apple-console-row">
+                            <label>Output</label>
+                            <code>{codeOutput.output}</code>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="apple-console-empty">
+                          <Icons.Play />
+                          <span>Run your code to see results</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                /* Camera & Tips Panel */
+                <aside className="apple-panel apple-panel--sidebar">
+                  {/* Guidelines */}
+                  <div className="apple-card">
+                    <header className="apple-card__header">
+                      <Icons.Shield />
+                      <h3>Guidelines</h3>
+                    </header>
+                    <ul className="apple-checklist">
+                      <li><Icons.Check /> Keep your face visible</li>
+                      <li><Icons.Check /> Look at your screen</li>
+                      <li><Icons.Check /> Stay in a quiet space</li>
+                      <li><Icons.Check /> No secondary devices</li>
+                    </ul>
+                  </div>
+
+                  {/* Tips */}
+                  <div className="apple-card apple-card--highlight">
+                    <header className="apple-card__header">
+                      <Icons.Lightbulb />
+                      <h3>Quick Tips</h3>
+                    </header>
+                    <ul className="apple-tips">
+                      <li>Take a breath before answering</li>
+                      <li>Structure your response clearly</li>
+                      <li>Use specific examples when possible</li>
+                    </ul>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="apple-card">
+                    <header className="apple-card__header">
+                      <Icons.Sparkles />
+                      <h3>Your Progress</h3>
+                    </header>
+                    <div className="apple-progress-card">
+                      <div className="apple-progress-card__circle">
+                        <svg viewBox="0 0 36 36">
+                          <path
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="var(--border-primary)"
+                            strokeWidth="3"
+                          />
+                          <path
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="var(--accent-primary)"
+                            strokeWidth="3"
+                            strokeDasharray={`${(answeredVisibleCount / totalQuestions) * 100}, 100`}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <span className="apple-progress-card__value">
+                          {answeredVisibleCount}/{totalQuestions}
+                        </span>
+                      </div>
+                      <span className="apple-progress-card__label">Questions Answered</span>
+                    </div>
+                  </div>
+                </aside>
+              )}
+            </div>
+          </main>
+
+          {/* ================================
+              SUBMIT MODAL
+              ================================ */}
+          {showExitConfirm && (
+            <div className="apple-modal-backdrop">
+              <div className="apple-modal">
+                <div className="apple-modal__icon">
+                  <Icons.Send />
+                </div>
+
+                <h2 className="apple-modal__title">Submit Interview?</h2>
+
+                <p className="apple-modal__description">
+                  You've completed {answeredQuestions.size} of {totalQuestions} questions.
+                  This action cannot be undone.
+                </p>
+
+                {answeredQuestions.size < totalQuestions && (
+                  <div className="apple-modal__warning">
+                    <Icons.Warning />
+                    <span>{totalQuestions - answeredQuestions.size} question(s) remaining</span>
+                  </div>
+                )}
+
+                <div className="apple-modal__actions">
+                  <button
+                    onClick={() => setShowExitConfirm(false)}
+                    disabled={isSubmitting}
+                    className="apple-btn apple-btn--secondary"
+                  >
+                    Go Back
+                  </button>
+                  <button
+                    onClick={confirmFinish}
+                    disabled={isSubmitting}
+                    className="apple-btn apple-btn--primary"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <span className="apple-spinner" />
+                        <span>Submitting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Submit</span>
+                        <Icons.Send />
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </nav>
+          )}
 
-        {/* ================================
-            SIDEBAR (Mobile)
-            ================================ */}
-        <aside className={`apple-sidebar ${showSidebar ? 'apple-sidebar--open' : ''}`}>
-          <div className="apple-sidebar__backdrop" onClick={() => setShowSidebar(false)} />
-          <div className="apple-sidebar__content">
-            <div className="apple-sidebar__header">
-              <h2 className="apple-sidebar__title">Questions</h2>
-              <button
-                className="apple-sidebar__close"
-                onClick={() => setShowSidebar(false)}
-              >
-                <Icons.X />
-              </button>
-            </div>
-            {renderQuestionList()}
-          </div>
-        </aside>
-
-        {/* ================================
-            MAIN CONTENT
-            ================================ */}
-        <main className="apple-main">
-          {/* Alert Banner */}
-          {alert?.hasWarning && (
-            <div className="apple-alert">
-              <div className="apple-alert__icon">
-                <Icons.Warning />
-              </div>
-              <div className="apple-alert__content">
-                <strong>Proctoring Alert</strong>
-                <p>{alert.message || 'Please ensure you follow the guidelines.'}</p>
-              </div>
-              <button className="apple-alert__dismiss">
+          {/* ================================
+              ERROR TOAST
+              ================================ */}
+          {error && config && (
+            <div className="apple-toast" role="alert">
+              <Icons.Warning />
+              <span>{error}</span>
+              <button onClick={() => setError(null)} aria-label="Dismiss">
                 <Icons.X />
               </button>
             </div>
           )}
-
-          {/* Content Container */}
-          <div className={`apple-content ${isCodeQuestion ? 'apple-content--code' : ''}`}>
-
-            {/* Left Panel - Question/Problem */}
-            <section className="apple-panel apple-panel--question">
-              <div className="apple-panel__scroll">
-                {/* Question Header */}
-                <header className="apple-question-header">
-                  <div className="apple-question-meta">
-                    <span className="apple-badge">
-                      {getQuestionTypeIcon(currentQuestion?.type || '')}
-                      <span>{currentQuestion?.type === 'mcq' ? 'Multiple Choice' :
-                        currentQuestion?.type === 'code' ? 'Coding' :
-                          currentQuestion?.type === 'audio' ? 'Voice' : 'Written'}</span>
-                    </span>
-                    {currentQuestion?.difficulty && (
-                      <span className={`apple-badge apple-badge--${currentQuestion.difficulty}`}>
-                        {currentQuestion.difficulty}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="apple-question-title-wrapper">
-                    <MorphingParticleText
-                      text={isProcessing ? "Analyzing Answer..." : (currentQuestion?.text || "Prepare Yourself")}
-                      className="morph-container"
-                    />
-                    <h1 className="sr-only">{currentQuestion?.text}</h1>
-                  </div>
-
-                  {currentQuestion?.durationSec && (
-                    <div className="apple-duration">
-                      <Icons.Clock />
-                      <span>Suggested time: {Math.floor(currentQuestion.durationSec / 60)} min</span>
-                    </div>
-                  )}
-                </header>
-
-                {/* Question Description (for code) */}
-                {currentQuestion?.description && (
-                  <div className="apple-description">
-                    {currentQuestion.description.split('\n').map((line, i) => (
-                      <p key={i}>{line}</p>
-                    ))}
-                  </div>
-                )}
-
-                {/* Test Cases (for code) */}
-                {isCodeQuestion && currentQuestion?.testCases && (
-                  <div className="apple-examples">
-                    <h3>Examples</h3>
-                    {currentQuestion.testCases.map((tc, i) => (
-                      <div key={i} className="apple-example">
-                        <div className="apple-example__label">Example {i + 1}</div>
-                        <div className="apple-example__row">
-                          <span className="apple-example__key">Input:</span>
-                          <code className="apple-example__value">{tc.input}</code>
-                        </div>
-                        <div className="apple-example__row">
-                          <span className="apple-example__key">Output:</span>
-                          <code className="apple-example__value">{tc.output}</code>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Answer Section (for non-code) */}
-                {!isCodeQuestion && (
-                  <div className="apple-answer">
-                    {currentQuestion?.type === 'audio' && (
-                      <div className="apple-audio-section">
-                        {/* Prompt Header */}
-                        <div className="apple-audio-prompt">
-                          <div className="apple-audio-prompt__icon">
-                            <Icons.Mic />
-                          </div>
-                          <h3 className="apple-audio-prompt__title">Voice Response</h3>
-                          <p className="apple-audio-prompt__subtitle">
-                            Take your time to think, then speak clearly into your microphone.
-                          </p>
-
-                          <div className="apple-audio-tips">
-                            <span className="apple-audio-tip">
-                              <Icons.Check /> Speak naturally
-                            </span>
-                            <span className="apple-audio-tip">
-                              <Icons.Check /> Stay on topic
-                            </span>
-                            <span className="apple-audio-tip">
-                              <Icons.Check /> No time limit
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Audio Component */}
-                        <AudioVisualizerCard
-                          key={currentQuestion?.id || `idx-${currentIndex}`}
-                          variant="default"
-                          showControls={!isProcessing}
-                          accentColor="#0071e3"
-                          interviewId={interviewId}
-                          questionId={currentQuestion?.id}
-                          silenceDetection={true}
-                          silenceDurationMs={2500}
-                          silenceThreshold={0.05}
-                          onRecordingStart={() => {
-                            console.log("Realtime recording started");
-                            startRealtimeAudio();
-                          }}
-                          onRecordingStop={(duration) => {
-                            console.log('Recording stopped locally, duration:', duration);
-                            stopRealtimeAudio();
-                            setAnsweredQuestions(prev => new Set(prev).add(currentIndex));
-                            handleAnswerChange(`audio_response_${duration}s`);
-                          }}
-                          onUploadComplete={() => {
-                            console.log("Upload complete. Path B disabled, skipping poll.");
-                            setIsProcessing(true);
-                            const filler = getRandomFiller();
-                            speakQuestion(filler);                     
-                          }}
-                        />
-
-                        {/* Processing / Completion State */}
-                        {isProcessing ? (
-                          <div className="apple-audio-complete apple-audio-complete--processing">
-                            <div className="apple-spinner" />
-                            <h4 className="apple-audio-complete__title">Processing Response...</h4>
-                            <p className="apple-audio-complete__duration">Please wait while we analyze your answer</p>
-                          </div>
-                        ) : answeredQuestions.has(currentIndex) && (
-                          <div className="apple-audio-complete">
-                            <div className="apple-audio-complete__icon">
-                              <Icons.Check />
-                            </div>
-                            <h4 className="apple-audio-complete__title">Response Recorded</h4>
-                            <p className="apple-audio-complete__duration">
-                              Your voice response has been saved
-                            </p>
-                            <div className="apple-audio-complete__actions">
-                              <button
-                                className="apple-btn apple-btn--secondary"
-                                onClick={() => {
-                                  setAnsweredQuestions(prev => {
-                                    const next = new Set(prev);
-                                    next.delete(currentIndex);
-                                    return next;
-                                  });
-                                  if (currentQuestion) {
-                                    setAnswers(prev => {
-                                      const next = { ...prev };
-                                      delete next[currentQuestion.id];
-                                      return next;
-                                    });
-                                  }
-                                }}
-                              >
-                                <Icons.RotateCcw />
-                                <span>Re-record</span>
-                              </button>
-                              <button
-                                className="apple-btn apple-btn--primary"
-                                onClick={isLastQuestion ? handleFinish : handleNext}
-                              >
-                                <span>{isLastQuestion ? 'Submit' : 'Continue'}</span>
-                                <Icons.ChevronRight />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {currentQuestion?.type === 'text' && (
-                      <textarea
-                        value={answers[currentQuestion.id] || ''}
-                        onChange={(e) => handleAnswerChange(e.target.value)}
-                        className="apple-textarea"
-                        placeholder="Write your answer here..."
-                        rows={8}
-                      />
-                    )}
-
-                    {currentQuestion?.type === 'mcq' && (
-                      <div className="apple-mcq">
-                        {currentQuestion.options?.map((option, i) => {
-                          const isSelected = answers[currentQuestion.id] === option;
-                          return (
-                            <label
-                              key={i}
-                              className={`apple-mcq__option ${isSelected ? 'apple-mcq__option--selected' : ''}`}
-                            >
-                              <input
-                                type="radio"
-                                name={`mcq-${currentQuestion.id}`}
-                                value={option}
-                                checked={isSelected}
-                                onChange={(e) => handleAnswerChange(e.target.value)}
-                              />
-                              <span className="apple-mcq__radio" />
-                              <span className="apple-mcq__text">{option}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Navigation */}
-                <nav className="apple-nav-controls">
-                  <button
-                    onClick={handlePrev}
-                    disabled={currentVisualIndex === 0 || isProcessing}
-                    className="apple-btn apple-btn--secondary"
-                  >
-                    <Icons.ChevronLeft />
-                    <span>Previous</span>
-                  </button>
-
-                  {/* Dots Navigation - Uses Visual Index */}
-                  <div className="apple-dots">
-                    {(() => {
-                      const maxVisible = 5;
-                      const halfVisible = Math.floor(maxVisible / 2);
-                      let startIndex = Math.max(0, currentVisualIndex - halfVisible);
-                      let endIndex = Math.min(totalQuestions, startIndex + maxVisible);
-
-                      if (endIndex - startIndex < maxVisible) {
-                        startIndex = Math.max(0, endIndex - maxVisible);
-                      }
-
-                      const visibleIndices: number[] = [];
-                      for (let i = startIndex; i < endIndex; i++) {
-                        visibleIndices.push(i);
-                      }
-
-                      return visibleIndices.map((visualIdx) => {
-                        const q = visibleQuestions[visualIdx];
-                        const rawIdx = questions.findIndex(rawQ => rawQ.id === q.id);
-                        const isAnswered = answeredQuestions.has(rawIdx);
-
-                        return (
-                          <button
-                            key={`dot-${visualIdx}-${q.id}`}
-                            className={`apple-dot ${visualIdx === currentVisualIndex ? 'apple-dot--active' : ''
-                              } ${isAnswered ? 'apple-dot--answered' : ''
-                              }`}
-                            onClick={() => !isProcessing && handleQuestionSelect(rawIdx)}
-                            aria-label={`Go to question ${visualIdx + 1}`}
-                            aria-current={visualIdx === currentVisualIndex ? 'step' : undefined}
-                            disabled={isProcessing}
-                          />
-                        );
-                      });
-                    })()}
-                  </div>
-
-                  <button
-                    onClick={isLastQuestion ? handleFinish : handleNext}
-                    disabled={isProcessing}
-                    className={`apple-btn ${isLastQuestion ? 'apple-btn--accent' : 'apple-btn--primary'}`}
-                  >
-                    <span>{isLastQuestion ? 'Submit' : 'Next'}</span>
-                    {isLastQuestion ? <Icons.Send /> : <Icons.ChevronRight />}
-                  </button>
-                </nav>
-              </div>
-            </section>
-
-            {/* Right Panel - Code Editor / Camera */}
-            {isCodeQuestion ? (
-              <section className="apple-panel apple-panel--editor">
-                {/* Editor Header */}
-                <header className="apple-editor-header">
-                  <div className="apple-editor-lang">
-                    <Icons.Code />
-                    <span>{currentQuestion?.language === 'python' ? 'Python 3' : 'JavaScript'}</span>
-                    <Icons.ChevronDown />
-                  </div>
-
-                  <div className="apple-editor-actions">
-                    <button
-                      className="apple-btn apple-btn--ghost"
-                      onClick={handleResetCode}
-                    >
-                      <Icons.RotateCcw />
-                      <span>Reset</span>
-                    </button>
-                    <button
-                      className="apple-btn apple-btn--secondary"
-                      onClick={handleRunCode}
-                    >
-                      <Icons.Play />
-                      <span>Run</span>
-                    </button>
-                    <button
-                      className="apple-btn apple-btn--primary"
-                      onClick={handleSubmit}
-                    >
-                      <Icons.Send />
-                      <span>Submit</span>
-                    </button>
-                  </div>
-                </header>
-
-                {/* Editor */}
-                <div className="apple-editor-body">
-                  <EmbeddedIDE
-                    questionId={currentQuestion?.id || ''}
-                    language={currentQuestion?.language || 'javascript'}
-                    testCases={currentQuestion?.testCases || []}
-                    value={answers[currentQuestion?.id] ?? ''}
-                    onChange={handleAnswerChange}
-                  />
-                </div>
-
-                {/* Console */}
-                <div className="apple-console">
-                  <header className="apple-console-header">
-                    <button
-                      className={`apple-console-tab ${consoleTab === 'testcase' ? 'apple-console-tab--active' : ''}`}
-                      onClick={() => setConsoleTab('testcase')}
-                    >
-                      Test Case
-                    </button>
-                    <button
-                      className={`apple-console-tab ${consoleTab === 'result' ? 'apple-console-tab--active' : ''}`}
-                      onClick={() => setConsoleTab('result')}
-                    >
-                      Result
-                    </button>
-                  </header>
-
-                  <div className="apple-console-body">
-                    {consoleTab === 'testcase' ? (
-                      <div className="apple-console-testcase">
-                        {currentQuestion?.testCases?.[0] && (
-                          <>
-                            <div className="apple-console-row">
-                              <label>Input</label>
-                              <code>{currentQuestion.testCases[0].input}</code>
-                            </div>
-                            <div className="apple-console-row">
-                              <label>Expected</label>
-                              <code>{currentQuestion.testCases[0].output}</code>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ) : codeOutput ? (
-                      <div className={`apple-console-result ${codeOutput.success ? 'apple-console-result--success' : 'apple-console-result--error'}`}>
-                        <div className="apple-console-result__header">
-                          {codeOutput.success ? <Icons.CheckCircle /> : <Icons.XCircle />}
-                          <span>{codeOutput.success ? 'Accepted' : 'Wrong Answer'}</span>
-                          {codeOutput.success && (
-                            <div className="apple-console-result__stats">
-                              <span>{codeOutput.runtime}</span>
-                              <span>{codeOutput.memory}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="apple-console-row">
-                          <label>Output</label>
-                          <code>{codeOutput.output}</code>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="apple-console-empty">
-                        <Icons.Play />
-                        <span>Run your code to see results</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </section>
-            ) : (
-              /* Camera & Tips Panel */
-              <aside className="apple-panel apple-panel--sidebar">
-                {/* Guidelines */}
-                <div className="apple-card">
-                  <header className="apple-card__header">
-                    <Icons.Shield />
-                    <h3>Guidelines</h3>
-                  </header>
-                  <ul className="apple-checklist">
-                    <li><Icons.Check /> Keep your face visible</li>
-                    <li><Icons.Check /> Look at your screen</li>
-                    <li><Icons.Check /> Stay in a quiet space</li>
-                    <li><Icons.Check /> No secondary devices</li>
-                  </ul>
-                </div>
-
-                {/* Tips */}
-                <div className="apple-card apple-card--highlight">
-                  <header className="apple-card__header">
-                    <Icons.Lightbulb />
-                    <h3>Quick Tips</h3>
-                  </header>
-                  <ul className="apple-tips">
-                    <li>Take a breath before answering</li>
-                    <li>Structure your response clearly</li>
-                    <li>Use specific examples when possible</li>
-                  </ul>
-                </div>
-
-                {/* Progress */}
-                <div className="apple-card">
-                  <header className="apple-card__header">
-                    <Icons.Sparkles />
-                    <h3>Your Progress</h3>
-                  </header>
-                  <div className="apple-progress-card">
-                    <div className="apple-progress-card__circle">
-                      <svg viewBox="0 0 36 36">
-                        <path
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="var(--border-primary)"
-                          strokeWidth="3"
-                        />
-                        <path
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="var(--accent-primary)"
-                          strokeWidth="3"
-                          strokeDasharray={`${(answeredVisibleCount / totalQuestions) * 100}, 100`}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <span className="apple-progress-card__value">
-                        {answeredVisibleCount}/{totalQuestions}
-                      </span>
-                    </div>
-                    <span className="apple-progress-card__label">Questions Answered</span>
-                  </div>
-                </div>
-              </aside>
-            )}
-          </div>
-        </main>
-
-        {/* ================================
-            SUBMIT MODAL
-            ================================ */}
-        {showExitConfirm && (
-          <div className="apple-modal-backdrop">
-            <div className="apple-modal">
-              <div className="apple-modal__icon">
-                <Icons.Send />
-              </div>
-
-              <h2 className="apple-modal__title">Submit Interview?</h2>
-
-              <p className="apple-modal__description">
-                You've completed {answeredQuestions.size} of {totalQuestions} questions.
-                This action cannot be undone.
-              </p>
-
-              {answeredQuestions.size < totalQuestions && (
-                <div className="apple-modal__warning">
-                  <Icons.Warning />
-                  <span>{totalQuestions - answeredQuestions.size} question(s) remaining</span>
-                </div>
-              )}
-
-              <div className="apple-modal__actions">
-                <button
-                  onClick={() => setShowExitConfirm(false)}
-                  disabled={isSubmitting}
-                  className="apple-btn apple-btn--secondary"
-                >
-                  Go Back
-                </button>
-                <button
-                  onClick={confirmFinish}
-                  disabled={isSubmitting}
-                  className="apple-btn apple-btn--primary"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="apple-spinner" />
-                      <span>Submitting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Submit</span>
-                      <Icons.Send />
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================================
-            ERROR TOAST
-            ================================ */}
-        {error && config && (
-          <div className="apple-toast" role="alert">
-            <Icons.Warning />
-            <span>{error}</span>
-            <button onClick={() => setError(null)} aria-label="Dismiss">
-              <Icons.X />
-            </button>
-          </div>
-        )}
-      </div>
-    </ProctoredShell>
+        </div>
+      </ProctoredShell>
+    </LiveKitRoom>
   );
 }
 
