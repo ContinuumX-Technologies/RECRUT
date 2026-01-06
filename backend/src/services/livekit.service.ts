@@ -21,5 +21,8 @@ export const getParticipantToken = async (roomName: string, participantName: str
     canSubscribe: true, 
   });
 
-  return { token: at.toJwt(), url: wsUrl };
+  // [FIX] await the toJwt() call
+  const token = await at.toJwt();
+
+  return { token, url: wsUrl };
 };
