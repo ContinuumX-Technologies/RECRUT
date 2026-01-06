@@ -2175,3 +2175,124 @@
     flex-direction: column-reverse;
   }
 }
+
+/* ============================================
+   ROUNDS MANAGER STYLES
+   ============================================ */
+
+   .admin-rounds-manager {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-top: var(--space-2);
+    border-top: 1px solid var(--border-secondary);
+    padding-top: var(--space-6);
+  }
+  
+  .admin-rounds-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .admin-section-title {
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--text-primary);
+  }
+  
+  /* Round Tabs */
+  .admin-round-tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-2);
+    overflow-x: auto;
+    padding-bottom: 2px; /* Space for border-bottom active state */
+    border-bottom: 1px solid var(--border-secondary);
+  }
+  
+  .admin-round-tab-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  
+  .admin-round-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: var(--space-3) var(--space-4);
+    padding-right: var(--space-8); /* Space for delete button */
+    min-width: 140px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-secondary);
+    border-bottom: none;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+  }
+  
+  .admin-round-tab--active {
+    background: var(--bg-elevated);
+    border-color: var(--accent-primary);
+    border-bottom: 1px solid var(--bg-elevated); /* Blend with container below */
+    margin-bottom: -1px; /* Overlap border */
+    color: var(--accent-primary);
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    z-index: 1;
+  }
+  
+  .admin-round-tab__name {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+  }
+  
+  .admin-round-tab__count {
+    font-size: var(--text-xs);
+    opacity: 0.7;
+  }
+  
+  .admin-round-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    z-index: 2;
+  }
+  
+  .admin-round-remove:hover {
+    background: var(--error-bg);
+    color: var(--error);
+  }
+  
+  /* Active Round Configuration */
+  .admin-active-round {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-secondary);
+    border-top: none; /* Merged with tabs */
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    padding: var(--space-5);
+    animation: admin-fadeIn 0.2s ease-out;
+  }
+  
+  .admin-active-round__config {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-6);
+    border-bottom: 1px dashed var(--border-secondary);
+  }

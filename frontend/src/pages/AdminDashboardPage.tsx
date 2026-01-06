@@ -4,6 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { LiveInterviewMonitor } from '../components/LiveInterviewMonitor';
 import './AdminDashboardPage.css';
 
+// ============================================
+// TYPES
+// ============================================
 
 type CodingMode = 'leetcode' | 'ai';
 
@@ -35,6 +38,15 @@ type Question = {
   };
 };
 
+// New Round Type
+type Round = {
+  id: string;
+  name: string;
+  type: 'coding' | 'technical' | 'hr' | 'mixed';
+  scheduledAt: string; // ISO Date string or empty
+  questions: Question[];
+};
+
 type ProctorConfig = {
   heartbeatMs: number;
   frameIntervalMs: number;
@@ -48,7 +60,8 @@ type Template = {
   level: string;
   description?: string;
   config: {
-    questions: Question[];
+    rounds?: Round[]; // Updated to support rounds
+    questions?: Question[]; // Backwards compatibility
     proctor: ProctorConfig;
   };
 };
@@ -133,11 +146,6 @@ const Icons = {
       <polyline points="9,18 15,12 9,6" />
     </svg>
   ),
-  ChevronDown: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="6,9 12,15 18,9" />
-    </svg>
-  ),
   Search: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="8" />
@@ -177,22 +185,6 @@ const Icons = {
       <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   ),
-  Code: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="16,18 22,12 16,6" />
-      <polyline points="8,6 2,12 8,18" />
-    </svg>
-  ),
-  Mic: () => (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z" />
-    </svg>
-  ),
-  CheckCircle: () => (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-    </svg>
-  ),
   AlertCircle: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" />
@@ -213,10 +205,17 @@ const Icons = {
       <path d="M12.2 6.2L11 5" />
     </svg>
   ),
+  Layers: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 2 7 12 12 22 7 12 2" />
+      <polyline points="2 17 12 22 22 17" />
+      <polyline points="2 12 12 17 22 12" />
+    </svg>
+  )
 };
 
 // ============================================
-// LOADING SPINNER
+// HELPERS
 // ============================================
 
 const LoadingSpinner = ({ size = 'default' }: { size?: 'sm' | 'default' | 'lg' }) => (
@@ -224,10 +223,6 @@ const LoadingSpinner = ({ size = 'default' }: { size?: 'sm' | 'default' | 'lg' }
     <div className="admin-spinner__ring" />
   </div>
 );
-
-// ============================================
-// TOAST COMPONENT
-// ============================================
 
 const Toast = ({
   message,
@@ -255,10 +250,6 @@ const Toast = ({
     </div>
   );
 };
-
-// ============================================
-// STATUS BADGE
-// ============================================
 
 const StatusBadge = ({ status }: { status: string }) => (
   <span className={`admin-status-badge admin-status-badge--${status}`}>
@@ -294,10 +285,19 @@ export function AdminDashboardPage() {
     description: '',
   });
 
-  // Questions Builder State
-  const [questions, setQuestions] = useState<Question[]>([
-    { id: '1', type: 'text', text: 'Tell me about yourself.', durationSec: 120 }
+  // --- Rounds & Questions State ---
+  const [rounds, setRounds] = useState<Round[]>([
+    {
+      id: crypto.randomUUID(),
+      name: 'Round 1: DSA',
+      type: 'coding',
+      scheduledAt: '',
+      questions: [
+        { id: crypto.randomUUID(), type: 'code', text: 'Solve Two Sum', durationSec: 1200, codingMode: 'leetcode' }
+      ]
+    }
   ]);
+  const [activeRoundIdx, setActiveRoundIdx] = useState(0);
 
   // Proctor Config State
   const [proctorConfig, setProctorConfig] = useState<ProctorConfig>({
@@ -322,11 +322,9 @@ export function AdminDashboardPage() {
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateUser | null>(null);
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
 
-  // Add this state for delete confirmation modal
+  // Modals
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  // Template delete confirmation
   const [templateDeleteConfirm, setTemplateDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [templateDeleting, setTemplateDeleting] = useState(false);
 
@@ -399,7 +397,6 @@ export function AdminDashboardPage() {
     }
   }, [token]);
 
-
   const loadInterviews = useCallback(async () => {
     if (!token) return;
     setLoading(prev => ({ ...prev, interviews: true }));
@@ -443,26 +440,68 @@ export function AdminDashboardPage() {
     }
   }, [token]);
 
-  // --- Handlers ---
-  const addQuestion = () => {
-    const newId = crypto.randomUUID();
-    setQuestions(prev => [...prev, {
-      id: newId,
-      type: 'text',
-      text: '',
-      durationSec: 60
-    }]);
+  // --- Handlers: Round Management ---
+
+  const addRound = () => {
+    const newRound: Round = {
+      id: crypto.randomUUID(),
+      name: `Round ${rounds.length + 1}`,
+      type: 'technical',
+      scheduledAt: '',
+      questions: [{ id: crypto.randomUUID(), type: 'text', text: '', durationSec: 300 }]
+    };
+    setRounds(prev => [...prev, newRound]);
+    setActiveRoundIdx(rounds.length); // switch to new round
   };
 
-  const removeQuestion = (idx: number) => {
-    if (questions.length === 1) {
-      setToast({ message: 'At least one question is required', type: 'error' });
+  const removeRound = (idx: number) => {
+    if (rounds.length === 1) {
+      setToast({ message: 'At least one round is required', type: 'error' });
       return;
     }
-    setQuestions(prev => prev.filter((_, i) => i !== idx));
+    const newRounds = rounds.filter((_, i) => i !== idx);
+    setRounds(newRounds);
+    if (activeRoundIdx >= newRounds.length) {
+      setActiveRoundIdx(newRounds.length - 1);
+    }
   };
 
-  // Delete interview handler
+  const updateRound = (idx: number, field: keyof Round, val: any) => {
+    setRounds(prev => prev.map((r, i) => i === idx ? { ...r, [field]: val } : r));
+  };
+
+  // --- Handlers: Question Management (Scoped to Active Round) ---
+
+  const addQuestion = () => {
+    const newQ: Question = {
+      id: crypto.randomUUID(),
+      type: 'text',
+      text: '',
+      durationSec: 300
+    };
+    const updatedRounds = [...rounds];
+    updatedRounds[activeRoundIdx].questions.push(newQ);
+    setRounds(updatedRounds);
+  };
+
+  const removeQuestion = (qIdx: number) => {
+    const updatedRounds = [...rounds];
+    if (updatedRounds[activeRoundIdx].questions.length === 1) {
+      setToast({ message: 'A round must have at least one question', type: 'error' });
+      return;
+    }
+    updatedRounds[activeRoundIdx].questions = updatedRounds[activeRoundIdx].questions.filter((_, i) => i !== qIdx);
+    setRounds(updatedRounds);
+  };
+
+  const updateQuestion = (qIdx: number, field: keyof Question, val: any) => {
+    const updatedRounds = [...rounds];
+    updatedRounds[activeRoundIdx].questions = updatedRounds[activeRoundIdx].questions.map((q, i) =>
+      i === qIdx ? { ...q, [field]: val } : q
+    );
+    setRounds(updatedRounds);
+  };
+
   const handleDeleteInterview = useCallback(async (interviewId: string) => {
     if (!token) return;
 
@@ -489,45 +528,46 @@ export function AdminDashboardPage() {
     }
   }, [token]);
 
-  const updateQuestion = (idx: number, field: keyof Question, val: any) => {
-    setQuestions(prev => prev.map((q, i) =>
-      i === idx ? { ...q, [field]: val } : q
-    ));
-  };
-
   const updateProctor = (field: keyof ProctorConfig, val: number) => {
     if (val < 0) return;
     setProctorConfig(prev => ({ ...prev, [field]: val }));
   };
 
+  // --- Submit Handler ---
+
   const handleCreateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
 
-    // FIX: Added optional chaining and null check for .text
-    const hasEmptyQuestion = questions.some(q => !q.text || !q.text.trim());
-    if (hasEmptyQuestion) {
-      setToast({ message: 'All questions must have text', type: 'error' });
-      return;
+    // Validation: Check all rounds
+    for (const round of rounds) {
+      if (!round.name.trim()) {
+        setToast({ message: 'All rounds must have a name', type: 'error' });
+        return;
+      }
+      const hasEmptyQuestion = round.questions.some(q => !q.text || !q.text.trim());
+      if (hasEmptyQuestion) {
+        setToast({ message: `Questions in ${round.name} cannot be empty`, type: 'error' });
+        return;
+      }
+      // JSON Validation for Code Questions
+      try {
+        round.questions.forEach(q => {
+          if (q.type === 'code' && q.codingMode === 'leetcode') {
+            JSON.stringify(q.testCases ?? []);
+            JSON.stringify(q.hiddenTestCases ?? []);
+          }
+        });
+      } catch {
+        setToast({ message: `Invalid JSON in test cases for ${round.name}.`, type: "error" });
+        return;
+      }
     }
 
     setLoading(prev => ({ ...prev, submit: true }));
 
-    try {
-      questions.forEach(q => {
-        if (q.type === 'code' && q.codingMode === 'leetcode') {
-          JSON.stringify(q.testCases ?? []);
-          JSON.stringify(q.hiddenTestCases ?? []);
-        }
-      });
-    } catch {
-      setToast({ message: "Invalid JSON in test cases.", type: "error" });
-      setLoading(prev => ({ ...prev, submit: false }));
-      return;
-    }
-
     const finalConfig = {
-      questions: questions.map(q => ({ ...q, text: q.text.trim() })),
+      rounds: rounds, // Sending the full rounds structure
       proctor: proctorConfig
     };
 
@@ -548,9 +588,17 @@ export function AdminDashboardPage() {
       });
 
       if (res.ok) {
-        setToast({ message: 'Template created successfully!', type: 'success' });
+        setToast({ message: 'Recruitment Drive Created!', type: 'success' });
+        // Reset Form
         setTplForm({ name: '', role: '', level: '', description: '' });
-        setQuestions([{ id: '1', type: 'text', text: 'Tell me about yourself.', durationSec: 120 }]);
+        setRounds([{
+          id: crypto.randomUUID(),
+          name: 'Round 1: DSA',
+          type: 'coding',
+          scheduledAt: '',
+          questions: [{ id: crypto.randomUUID(), type: 'code', text: 'Solve Two Sum', durationSec: 1200 }]
+        }]);
+        setActiveRoundIdx(0);
         setProctorConfig({ heartbeatMs: 5000, frameIntervalMs: 5000, focusLossThreshold: 3 });
         loadTemplates();
       } else {
@@ -604,7 +652,7 @@ export function AdminDashboardPage() {
     }
   };
 
-  const handleGenerateAI = async (idx: number, questionId: string, aiConfig: any) => {
+  const handleGenerateAI = async (qIdx: number, questionId: string, aiConfig: any) => {
     try {
       setAiLoading(prev => ({ ...prev, [questionId]: true }));
       setToast({ message: "Generating question with AI...", type: "info" });
@@ -622,13 +670,12 @@ export function AdminDashboardPage() {
 
       const data = await res.json();
 
-      // UPDATED: Match the backend keys and update all necessary fields
-      updateQuestion(idx, 'text', data.text || data.title); // Fallback for safety
-      updateQuestion(idx, 'type', data.type || 'code');
-      updateQuestion(idx, 'description', data.description);
-      updateQuestion(idx, 'testCases', data.testCases);
-      updateQuestion(idx, 'hiddenTestCases', data.hiddenTestCases);
-      updateQuestion(idx, 'starterCode', data.starterCode); // Save the code!
+      updateQuestion(qIdx, 'text', data.text || data.title);
+      updateQuestion(qIdx, 'type', data.type || 'code');
+      updateQuestion(qIdx, 'description', data.description);
+      updateQuestion(qIdx, 'testCases', data.testCases);
+      updateQuestion(qIdx, 'hiddenTestCases', data.hiddenTestCases);
+      updateQuestion(qIdx, 'starterCode', data.starterCode);
 
       setToast({ message: "AI question generated!", type: "success" });
     } catch (err) {
@@ -637,6 +684,18 @@ export function AdminDashboardPage() {
     } finally {
       setAiLoading(prev => ({ ...prev, [questionId]: false }));
     }
+  };
+
+  // Helper to safely get stats from template (Backward compatible)
+  const getTemplateStats = (t: Template) => {
+    const roundCount = t.config?.rounds?.length || 0;
+    let questionCount = 0;
+    if (t.config?.rounds) {
+      questionCount = t.config.rounds.reduce((acc, r) => acc + r.questions.length, 0);
+    } else if (t.config?.questions) {
+      questionCount = t.config.questions.length;
+    }
+    return { roundCount, questionCount };
   };
 
   // Memoized values
@@ -684,7 +743,7 @@ export function AdminDashboardPage() {
                 <Icons.Sparkles />
               </div>
               <div className="admin-nav__brand-text">
-                <h1 className="admin-nav__title">Admin Dashboard</h1>
+                <h1 className="admin-nav__title">Recruitment Dashboard</h1>
                 <p className="admin-nav__subtitle">{user.name}</p>
               </div>
             </div>
@@ -692,25 +751,13 @@ export function AdminDashboardPage() {
 
           {/* Center - Stats & Tabs (Desktop) */}
           <div className="admin-nav__center">
-            <div className="admin-nav__stats">
-              <div className="admin-stat">
-                <span className="admin-stat__dot admin-stat__dot--green" />
-                <span className="admin-stat__text">{totalTemplates} Templates</span>
-              </div>
-              <div className="admin-stat__divider" />
-              <div className="admin-stat">
-                <span className="admin-stat__dot admin-stat__dot--blue" />
-                <span className="admin-stat__text">{upcomingInterviews} Scheduled</span>
-              </div>
-            </div>
-
             <div className="admin-nav__tabs">
               <button
                 className={`admin-nav__tab ${tab === 'templates' ? 'admin-nav__tab--active' : ''}`}
                 onClick={() => setTab('templates')}
               >
-                <Icons.Briefcase />
-                <span>Templates</span>
+                <Icons.Layers />
+                <span>Drives / Templates</span>
               </button>
               <button
                 className={`admin-nav__tab ${tab === 'interviews' ? 'admin-nav__tab--active' : ''}`}
@@ -723,7 +770,7 @@ export function AdminDashboardPage() {
                 className={`admin-nav__tab ${tab === 'live' ? 'admin-nav__tab--active' : ''}`}
                 onClick={() => setTab('live')}
               >
-                <Icons.Camera /> {/* Assume Camera icon exists or reuse Eye */}
+                <Icons.Camera />
                 <span>Live Monitor</span>
               </button>
             </div>
@@ -757,18 +804,6 @@ export function AdminDashboardPage() {
                 <span>Interviews</span>
               </button>
             </div>
-
-            <div className="admin-mobile-menu__stats">
-              <div className="admin-mobile-menu__stat">
-                <span className="admin-mobile-menu__stat-value">{totalTemplates}</span>
-                <span className="admin-mobile-menu__stat-label">Templates</span>
-              </div>
-              <div className="admin-mobile-menu__stat-divider" />
-              <div className="admin-mobile-menu__stat">
-                <span className="admin-mobile-menu__stat-value">{upcomingInterviews}</span>
-                <span className="admin-mobile-menu__stat-label">Scheduled</span>
-              </div>
-            </div>
           </div>
         )}
       </header>
@@ -790,12 +825,12 @@ export function AdminDashboardPage() {
                       <Icons.Plus />
                     </div>
                     <div>
-                      <h2 className="admin-panel__title">Create Template</h2>
-                      <p className="admin-panel__subtitle">Design your interview structure</p>
+                      <h2 className="admin-panel__title">Create Recruitment Drive</h2>
+                      <p className="admin-panel__subtitle">Define rounds, schedule, and questions</p>
                     </div>
                   </div>
                   <div className="admin-badge">
-                    {questions.length} Question{questions.length !== 1 ? 's' : ''}
+                    {rounds.length} Round{rounds.length !== 1 ? 's' : ''}
                   </div>
                 </div>
 
@@ -804,12 +839,12 @@ export function AdminDashboardPage() {
                   <div className="admin-form__section">
                     <div className="admin-form__row">
                       <div className="admin-input-group">
-                        <label className="admin-label">Template Name</label>
+                        <label className="admin-label">Drive / Template Name</label>
                         <input
                           type="text"
                           required
                           className="admin-input"
-                          placeholder="Senior Frontend Developer"
+                          placeholder="e.g. VIT Campus Drive 2026"
                           value={tplForm.name}
                           onChange={e => setTplForm({ ...tplForm, name: e.target.value })}
                         />
@@ -823,6 +858,7 @@ export function AdminDashboardPage() {
                           onChange={e => setTplForm({ ...tplForm, level: e.target.value })}
                         >
                           <option value="">Select Level...</option>
+                          <option value="intern">Internship</option>
                           <option value="junior">Junior (0-2 years)</option>
                           <option value="mid">Mid-Level (2-5 years)</option>
                           <option value="senior">Senior (5+ years)</option>
@@ -837,7 +873,7 @@ export function AdminDashboardPage() {
                         type="text"
                         required
                         className="admin-input"
-                        placeholder="React Developer, DevOps Engineer"
+                        placeholder="e.g. SDE-1, Data Scientist"
                         value={tplForm.role}
                         onChange={e => setTplForm({ ...tplForm, role: e.target.value })}
                       />
@@ -855,8 +891,208 @@ export function AdminDashboardPage() {
                     </div>
                   </div>
 
-                  {/* Proctor Config */}
-                  <div className="admin-proctor-config">
+                  {/* ROUNDS MANAGER */}
+                  <div className="admin-rounds-manager">
+                    <div className="admin-rounds-header">
+                      <h3 className="admin-section-title">Interview Rounds</h3>
+                      <button type="button" onClick={addRound} className="admin-btn admin-btn--secondary admin-btn--sm">
+                        <Icons.Plus /> Add Round
+                      </button>
+                    </div>
+
+                    {/* Round Tabs */}
+                    <div className="admin-round-tabs">
+                      {rounds.map((r, idx) => (
+                        <div key={r.id} className="admin-round-tab-wrapper">
+                          <button
+                            type="button"
+                            className={`admin-round-tab ${idx === activeRoundIdx ? 'admin-round-tab--active' : ''}`}
+                            onClick={() => setActiveRoundIdx(idx)}
+                          >
+                            <span className="admin-round-tab__name">{r.name}</span>
+                            <span className="admin-round-tab__count">{r.questions.length}Q</span>
+                          </button>
+                          {rounds.length > 1 && (
+                            <button
+                              type="button"
+                              className="admin-round-remove"
+                              onClick={(e) => { e.stopPropagation(); removeRound(idx); }}
+                              title="Remove Round"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Active Round Configuration */}
+                    <div className="admin-active-round">
+                      <div className="admin-active-round__config">
+                        <div className="admin-form__row">
+                          <div className="admin-input-group">
+                            <label className="admin-label admin-label--sm">Round Name</label>
+                            <input
+                              type="text"
+                              className="admin-input admin-input--sm"
+                              value={rounds[activeRoundIdx].name}
+                              onChange={e => updateRound(activeRoundIdx, 'name', e.target.value)}
+                              placeholder="e.g. Round 1: Coding"
+                            />
+                          </div>
+                          <div className="admin-input-group">
+                            <label className="admin-label admin-label--sm">Round Type</label>
+                            <select
+                              className="admin-select admin-select--sm"
+                              value={rounds[activeRoundIdx].type}
+                              onChange={e => updateRound(activeRoundIdx, 'type', e.target.value)}
+                            >
+                              <option value="coding">Coding / DSA</option>
+                              <option value="technical">Technical Interview</option>
+                              <option value="hr">HR / Behavioral</option>
+                              <option value="mixed">Mixed Assessment</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="admin-input-group">
+                          <label className="admin-label admin-label--sm">Scheduled Date (Optional)</label>
+                          <input
+                            type="datetime-local"
+                            className="admin-input admin-input--sm"
+                            value={rounds[activeRoundIdx].scheduledAt}
+                            onChange={e => updateRound(activeRoundIdx, 'scheduledAt', e.target.value)}
+                          />
+                          <p className="admin-input-hint">Leave blank if scheduling happens later per candidate.</p>
+                        </div>
+                      </div>
+
+                      {/* Questions for Active Round */}
+                      <div className="admin-questions">
+                        <div className="admin-questions__header">
+                          <h4 className="admin-questions__title">Questions for {rounds[activeRoundIdx].name}</h4>
+                          <button type="button" onClick={addQuestion} className="admin-btn admin-btn--primary admin-btn--sm">
+                            <Icons.Plus /> Add Question
+                          </button>
+                        </div>
+
+                        <div className="admin-questions__list">
+                          {rounds[activeRoundIdx].questions.map((q, qIdx) => (
+                            <div key={q.id} className="admin-question-card">
+                              <span className="admin-question-card__number">{qIdx + 1}</span>
+
+                              <button type="button" onClick={() => removeQuestion(qIdx)} className="admin-question-card__delete">
+                                <Icons.Trash />
+                              </button>
+
+                              <div className="admin-question-card__content">
+                                <div className="admin-question-card__row">
+                                  <select className="admin-select" value={q.type} onChange={e => updateQuestion(qIdx, 'type', e.target.value)}>
+                                    <option value="code">💻 Code Challenge</option>
+                                    <option value="text">✏️ Text Response</option>
+                                    <option value="audio">🎤 Voice Response</option>
+                                    <option value="mcq">☑️ Multiple Choice</option>
+                                  </select>
+                                  <div className="admin-duration-input">
+                                    <Icons.Clock />
+                                    <input
+                                      type="number"
+                                      min="60"
+                                      className="admin-duration-input__field"
+                                      value={q.durationSec}
+                                      onChange={e => updateQuestion(qIdx, 'durationSec', parseInt(e.target.value) || 60)}
+                                    />
+                                    <span>sec</span>
+                                  </div>
+                                </div>
+
+                                <textarea
+                                  required
+                                  className="admin-textarea"
+                                  rows={2}
+                                  placeholder="Enter question text..."
+                                  value={q.text}
+                                  onChange={e => updateQuestion(qIdx, 'text', e.target.value)}
+                                />
+
+                                {/* Code Configuration (Only if type is code) */}
+                                {q.type === 'code' && (
+                                  <div className="admin-code-config">
+                                    <div className="admin-input-group">
+                                      <select
+                                        className="admin-select"
+                                        value={q.codingMode || 'leetcode'}
+                                        onChange={e => updateQuestion(qIdx, 'codingMode', e.target.value)}
+                                      >
+                                        <option value="leetcode">Manual / LeetCode Style</option>
+                                        <option value="ai">Generate with AI</option>
+                                      </select>
+                                    </div>
+
+                                    {/* AI Generator UI */}
+                                    {q.codingMode === 'ai' && (
+                                      <div className="admin-ai-generator">
+                                        <div className="admin-form__row">
+                                          <select
+                                            className="admin-select"
+                                            value={q.aiConfig?.difficulty || 'medium'}
+                                            onChange={e => updateQuestion(qIdx, 'aiConfig', { ...q.aiConfig, difficulty: e.target.value })}
+                                          >
+                                            <option value="easy">Easy</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="hard">Hard</option>
+                                          </select>
+                                          <input
+                                            type="text"
+                                            className="admin-input"
+                                            placeholder="Topic (e.g. Arrays)"
+                                            value={q.aiConfig?.dataStructure || ''}
+                                            onChange={e => updateQuestion(qIdx, 'aiConfig', { ...q.aiConfig, dataStructure: e.target.value })}
+                                          />
+                                        </div>
+                                        <button
+                                          type="button"
+                                          className="admin-btn admin-btn--purple admin-btn--full"
+                                          disabled={aiLoading[q.id]}
+                                          onClick={() => handleGenerateAI(qIdx, q.id, q.aiConfig)}
+                                        >
+                                          {aiLoading[q.id] ? <LoadingSpinner size="sm" /> : <><Icons.Wand /> Generate Question</>}
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    {/* Manual LeetCode UI */}
+                                    {q.codingMode === 'leetcode' && (
+                                      <>
+                                        <textarea
+                                          className="admin-textarea admin-textarea--sm"
+                                          placeholder="Problem Description..."
+                                          value={q.description || ''}
+                                          onChange={e => updateQuestion(qIdx, 'description', e.target.value)}
+                                        />
+                                        <div className="admin-input-group">
+                                            <label className="admin-label admin-label--sm">Test Cases</label>
+                                            <textarea
+                                            className="admin-textarea admin-textarea--mono"
+                                            placeholder='Public Test Cases JSON: [{ "input": "...", "output": "..." }]'
+                                            value={JSON.stringify(q.testCases || [], null, 2)}
+                                            onChange={e => { try { updateQuestion(qIdx, 'testCases', JSON.parse(e.target.value)); } catch { } }}
+                                            />
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* END ROUNDS MANAGER */}
+                  
+                  {/* Proctor Config (Common for all rounds in this template) */}
+                  <div className="admin-proctor-config" style={{marginTop: '2rem'}}>
                     <h3 className="admin-proctor-config__title">
                       <Icons.Clock />
                       <span>Proctor Configuration</span>
@@ -865,426 +1101,69 @@ export function AdminDashboardPage() {
                       <div className="admin-input-group">
                         <label className="admin-label admin-label--sm">Heartbeat Interval</label>
                         <div className="admin-input-with-suffix">
-                          <input
-                            type="number"
-                            min="1000"
-                            max="60000"
-                            step="1000"
-                            className="admin-input admin-input--sm"
-                            value={proctorConfig.heartbeatMs}
-                            onChange={e => updateProctor('heartbeatMs', parseInt(e.target.value) || 5000)}
-                          />
-                          <span className="admin-input-suffix">ms</span>
-                        </div>
-                      </div>
-                      <div className="admin-input-group">
-                        <label className="admin-label admin-label--sm">Frame Capture</label>
-                        <div className="admin-input-with-suffix">
-                          <input
-                            type="number"
-                            min="1000"
-                            max="60000"
-                            step="1000"
-                            className="admin-input admin-input--sm"
-                            value={proctorConfig.frameIntervalMs}
-                            onChange={e => updateProctor('frameIntervalMs', parseInt(e.target.value) || 5000)}
-                          />
+                          <input type="number" className="admin-input admin-input--sm" value={proctorConfig.heartbeatMs} onChange={e => updateProctor('heartbeatMs', parseInt(e.target.value))} />
                           <span className="admin-input-suffix">ms</span>
                         </div>
                       </div>
                       <div className="admin-input-group">
                         <label className="admin-label admin-label--sm">Focus Loss Limit</label>
                         <div className="admin-input-with-suffix">
-                          <input
-                            type="number"
-                            min="1"
-                            max="10"
-                            className="admin-input admin-input--sm"
-                            value={proctorConfig.focusLossThreshold}
-                            onChange={e => updateProctor('focusLossThreshold', parseInt(e.target.value) || 3)}
-                          />
+                          <input type="number" className="admin-input admin-input--sm" value={proctorConfig.focusLossThreshold} onChange={e => updateProctor('focusLossThreshold', parseInt(e.target.value))} />
                           <span className="admin-input-suffix">strikes</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Questions Builder */}
-                  <div className="admin-questions">
-                    <div className="admin-questions__header">
-                      <h3 className="admin-questions__title">Interview Questions</h3>
-                      <button
-                        type="button"
-                        onClick={addQuestion}
-                        className="admin-btn admin-btn--primary admin-btn--sm"
-                      >
-                        <Icons.Plus />
-                        <span>Add Question</span>
-                      </button>
-                    </div>
-
-                    <div className="admin-questions__list">
-                      {questions.map((q, idx) => (
-                        <div key={q.id} className="admin-question-card">
-                          <span className="admin-question-card__number">{idx + 1}</span>
-
-                          {questions.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeQuestion(idx)}
-                              className="admin-question-card__delete"
-                              aria-label="Delete question"
-                            >
-                              <Icons.Trash />
-                            </button>
-                          )}
-
-                          <div className="admin-question-card__content">
-                            <div className="admin-question-card__row">
-                              <select
-                                className="admin-select"
-                                value={q.type}
-                                onChange={e => updateQuestion(idx, 'type', e.target.value)}
-                              >
-                                <option value="text">✏️ Text Response</option>
-                                <option value="audio">🎤 Voice Response</option>
-                                <option value="mcq">☑️ Multiple Choice</option>
-                                <option value="code">💻 Code Challenge</option>
-                              </select>
-
-                              <div className="admin-duration-input">
-                                <Icons.Clock />
-                                <input
-                                  type="number"
-                                  min="10"
-                                  max="600"
-                                  className="admin-duration-input__field"
-                                  value={q.durationSec}
-                                  onChange={e => updateQuestion(idx, 'durationSec', parseInt(e.target.value) || 60)}
-                                />
-                                <span>sec</span>
-                              </div>
-                            </div>
-
-                            <textarea
-                              required
-                              className="admin-textarea"
-                              rows={3}
-                              placeholder="Enter your question here..."
-                              value={q.text}
-                              onChange={e => updateQuestion(idx, 'text', e.target.value)}
-                            />
-
-                            {/* Code Question Options */}
-                            {q.type === 'code' && (
-                              <div className="admin-code-config">
-                                <div className="admin-input-group">
-                                  <label className="admin-label admin-label--sm">Coding Type</label>
-                                  <select
-                                    className="admin-select"
-                                    value={q.codingMode || 'leetcode'}
-                                    onChange={e => {
-                                      const mode = e.target.value as CodingMode;
-                                      updateQuestion(idx, 'codingMode', mode);
-                                      if (mode === 'ai') {
-                                        updateQuestion(idx, 'aiConfig', {
-                                          difficulty: 'medium',
-                                          dataStructure: '',
-                                          algorithm: '',
-                                          promptHint: ''
-                                        });
-                                      }
-                                    }}
-                                  >
-                                    <option value="leetcode">🧩 LeetCode Style</option>
-                                    <option value="ai">🤖 AI Generated</option>
-                                  </select>
-                                </div>
-
-                                {q.codingMode === 'leetcode' && (
-                                  <>
-                                    <div className="admin-input-group">
-                                      <label className="admin-label admin-label--sm">Description</label>
-                                      <textarea
-                                        className="admin-textarea admin-textarea--sm"
-                                        placeholder="Problem description..."
-                                        value={q.description || ''}
-                                        onChange={e => updateQuestion(idx, 'description', e.target.value)}
-                                      />
-                                    </div>
-
-                                    <div className="admin-input-group">
-                                      <label className="admin-label admin-label--sm">Language</label>
-                                      <select
-                                        className="admin-select"
-                                        value={q.language || 'javascript'}
-                                        onChange={e => updateQuestion(idx, 'language', e.target.value)}
-                                      >
-                                        <option value="javascript">JavaScript</option>
-                                        <option value="typescript">TypeScript</option>
-                                        <option value="python">Python</option>
-                                        <option value="java">Java</option>
-                                        <option value="cpp">C++</option>
-                                      </select>
-                                    </div>
-
-                                    <div className="admin-input-group">
-                                      <label className="admin-label admin-label--sm">Public Test Cases (JSON)</label>
-                                      <textarea
-                                        className="admin-textarea admin-textarea--mono"
-                                        placeholder='[{ "input": "[1,2]", "output": "3" }]'
-                                        value={JSON.stringify(q.testCases || [], null, 2)}
-                                        onChange={e => {
-                                          try {
-                                            updateQuestion(idx, 'testCases', JSON.parse(e.target.value));
-                                          } catch { }
-                                        }}
-                                      />
-                                    </div>
-
-                                    <div className="admin-input-group">
-                                      <label className="admin-label admin-label--sm">Hidden Test Cases (JSON)</label>
-                                      <textarea
-                                        className="admin-textarea admin-textarea--mono"
-                                        placeholder='[{ "input": "[5,7]", "output": "12" }]'
-                                        value={JSON.stringify(q.hiddenTestCases || [], null, 2)}
-                                        onChange={e => {
-                                          try {
-                                            updateQuestion(idx, 'hiddenTestCases', JSON.parse(e.target.value));
-                                          } catch { }
-                                        }}
-                                      />
-                                    </div>
-                                  </>
-                                )}
-
-                                {q.codingMode === 'ai' && (
-                                  <>
-                                    <div className="admin-form__row">
-                                      <div className="admin-input-group">
-                                        <label className="admin-label admin-label--sm">Difficulty</label>
-                                        <select
-                                          className="admin-select"
-                                          value={q.aiConfig?.difficulty || 'medium'}
-                                          onChange={e => updateQuestion(idx, 'aiConfig', {
-                                            ...q.aiConfig,
-                                            difficulty: e.target.value
-                                          })}
-                                        >
-                                          <option value="easy">Easy</option>
-                                          <option value="medium">Medium</option>
-                                          <option value="hard">Hard</option>
-                                        </select>
-                                      </div>
-                                      <div className="admin-input-group">
-                                        <label className="admin-label admin-label--sm">Data Structure</label>
-                                        <input
-                                          type="text"
-                                          className="admin-input admin-input--sm"
-                                          placeholder="Array, Tree, Graph..."
-                                          value={q.aiConfig?.dataStructure || ''}
-                                          onChange={e => updateQuestion(idx, 'aiConfig', {
-                                            ...q.aiConfig,
-                                            dataStructure: e.target.value
-                                          })}
-                                        />
-                                      </div>
-                                    </div>
-
-                                    <div className="admin-input-group">
-                                      <label className="admin-label admin-label--sm">Algorithm</label>
-                                      <input
-                                        type="text"
-                                        className="admin-input admin-input--sm"
-                                        placeholder="BFS, DP, Binary Search..."
-                                        value={q.aiConfig?.algorithm || ''}
-                                        onChange={e => updateQuestion(idx, 'aiConfig', {
-                                          ...q.aiConfig,
-                                          algorithm: e.target.value
-                                        })}
-                                      />
-                                    </div>
-
-                                    <div className="admin-input-group">
-                                      <label className="admin-label admin-label--sm">Prompt Guidance</label>
-                                      <textarea
-                                        className="admin-textarea admin-textarea--sm"
-                                        placeholder="Optional guidance for AI..."
-                                        value={q.aiConfig?.promptHint || ''}
-                                        onChange={e => updateQuestion(idx, 'aiConfig', {
-                                          ...q.aiConfig,
-                                          promptHint: e.target.value
-                                        })}
-                                      />
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      disabled={aiLoading[q.id]}
-                                      className="admin-btn admin-btn--purple"
-                                      onClick={() => handleGenerateAI(idx, q.id, q.aiConfig)}
-                                    >
-                                      {aiLoading[q.id] ? (
-                                        <>
-                                          <LoadingSpinner size="sm" />
-                                          <span>Generating...</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Icons.Wand />
-                                          <span>Generate with AI</span>
-                                        </>
-                                      )}
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Submit */}
                   <button
                     type="submit"
-                    disabled={loading.submit || !tplForm.name.trim() || !tplForm.role.trim() || !tplForm.level}
+                    disabled={loading.submit || !tplForm.name.trim()}
                     className="admin-btn admin-btn--primary admin-btn--lg admin-btn--full"
                   >
                     {loading.submit ? (
                       <>
                         <LoadingSpinner size="sm" />
-                        <span>Creating Template...</span>
+                        <span>Creating Recruitment Drive...</span>
                       </>
                     ) : (
                       <>
                         <Icons.Save />
-                        <span>Save Template Configuration</span>
+                        <span>Save Recruitment Drive</span>
                       </>
                     )}
                   </button>
                 </form>
               </section>
 
-              {/* Template Library */}
+              {/* Template Library List */}
               <section className="admin-panel admin-panel--small">
                 <div className="admin-panel__header admin-panel__header--simple">
-                  <h2 className="admin-panel__title">Template Library</h2>
-                  <div className="admin-badge">{templates.length} Total</div>
+                  <h2 className="admin-panel__title">Library</h2>
+                  <div className="admin-badge">{templates.length}</div>
                 </div>
-
-                {loading.templates ? (
-                  <LoadingSpinner />
-                ) : templates.length === 0 ? (
-                  <div className="admin-empty-state">
-                    <div className="admin-empty-state__icon">
-                      <Icons.Briefcase />
-                    </div>
-                    <p className="admin-empty-state__title">No templates yet</p>
-                    <p className="admin-empty-state__text">Create your first template to get started</p>
-                  </div>
-                ) : (
-                  <div className="admin-template-list">
-                    {templates.map(t => (
-                      <div key={t.id} className="admin-template-card">
-                        <div className="admin-template-card__header">
-                          <h3 className="admin-template-card__name">{t.name}</h3>
-
-                          <div className="admin-template-card__actions">
-                            <button
-                              type="button"
-                              className="admin-template-card__delete"
-                              onClick={() => setTemplateDeleteConfirm({ id: t.id, name: t.name })}
-                              aria-label="Delete template"
-                            >
-                              <Icons.Trash />
-                            </button>
-                          </div>
-                        </div>
-                        {templateDeleteConfirm && (
-                          <div className="admin-modal-backdrop">
-                            <div className="admin-modal">
-                              <div className="admin-modal__icon admin-modal__icon--danger">
-                                <Icons.Trash />
-                              </div>
-
-                              <h2 className="admin-modal__title">Delete Template?</h2>
-
-                              <p className="admin-modal__description">
-                                Are you sure you want to delete the template
-                                <strong> {templateDeleteConfirm.name} </strong>?
-                              </p>
-
-                              <div className="admin-modal__warning">
-                                <Icons.AlertCircle />
-                                <span>
-                                  This action cannot be undone. Templates used in interviews cannot be deleted.
-                                </span>
-                              </div>
-
-                              <div className="admin-modal__actions">
-                                <button
-                                  onClick={() => setTemplateDeleteConfirm(null)}
-                                  disabled={templateDeleting}
-                                  className="admin-btn admin-btn--secondary"
-                                >
-                                  Cancel
-                                </button>
-
-                                <button
-                                  onClick={() => handleDeleteTemplate(templateDeleteConfirm.id)}
-                                  disabled={templateDeleting}
-                                  className="admin-btn admin-btn--danger"
-                                >
-                                  {templateDeleting ? (
-                                    <>
-                                      <LoadingSpinner size="sm" />
-                                      <span>Deleting...</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Icons.Trash />
-                                      <span>Delete Template</span>
-                                    </>
-                                  )}
-                                </button>
-                              </div>
+                <div className="admin-template-list">
+                    {templates.map(t => {
+                        const { roundCount, questionCount } = getTemplateStats(t);
+                        return (
+                            <div key={t.id} className="admin-template-card">
+                                <div className="admin-template-card__header">
+                                    <h3 className="admin-template-card__name">{t.name}</h3>
+                                    <button onClick={() => setTemplateDeleteConfirm({ id: t.id, name: t.name })} className="admin-template-card__delete"><Icons.Trash /></button>
+                                </div>
+                                <div className="admin-template-card__badges">
+                                    <span className="admin-tag admin-tag--blue">{t.role}</span>
+                                    <span className="admin-tag admin-tag--purple">{t.level}</span>
+                                </div>
+                                <div className="admin-template-card__footer">
+                                    <div className="admin-template-card__stats">
+                                        <span><span className="admin-dot admin-dot--green" />{roundCount} Rounds</span>
+                                        <span><span className="admin-dot admin-dot--blue" />{questionCount} Qs</span>
+                                    </div>
+                                </div>
                             </div>
-                          </div>
-                        )}
-
-
-                        <div className="admin-template-card__badges">
-                          <span className="admin-tag admin-tag--blue">
-                            <Icons.Briefcase />
-                            {t.role}
-                          </span>
-                          <span className="admin-tag admin-tag--purple">
-                            {t.level?.toUpperCase()}
-                          </span>
-                        </div>
-
-                        {t.description && (
-                          <p className="admin-template-card__desc">{t.description}</p>
-                        )}
-
-                        <div className="admin-template-card__footer">
-                          <div className="admin-template-card__stats">
-                            <span>
-                              <span className="admin-dot admin-dot--green" />
-                              {t.config?.questions?.length || 0} Questions
-                            </span>
-                            <span>
-                              <span className="admin-dot admin-dot--blue" />
-                              {t.config?.proctor?.heartbeatMs ? `${t.config.proctor.heartbeatMs / 1000}s` : 'N/A'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                        );
+                    })}
+                </div>
               </section>
             </div>
           )}
@@ -1295,17 +1174,8 @@ export function AdminDashboardPage() {
               {/* Schedule Form */}
               <section className="admin-panel admin-panel--small">
                 <div className="admin-panel__header">
-                  <div className="admin-panel__header-left">
-                    <div className="admin-panel__icon admin-panel__icon--blue">
-                      <Icons.Calendar />
-                    </div>
-                    <div>
-                      <h2 className="admin-panel__title">Schedule Interview</h2>
-                      <p className="admin-panel__subtitle">Set up a new session</p>
-                    </div>
-                  </div>
+                  <h2 className="admin-panel__title">Schedule Interview</h2>
                 </div>
-
                 {/* Candidate Search */}
                 <div className="admin-search">
                   <label className="admin-label">Find Candidate</label>
@@ -1316,7 +1186,7 @@ export function AdminDashboardPage() {
                     <input
                       type="text"
                       className="admin-input admin-input--search"
-                      placeholder="Search by name, email or ID..."
+                      placeholder="Search..."
                       value={candidateQuery}
                       onChange={e => {
                         setCandidateQuery(e.target.value);
@@ -1325,228 +1195,72 @@ export function AdminDashboardPage() {
                       }}
                     />
                   </div>
-
                   {candidateResults.length > 0 && (
-                    <div className="admin-search__dropdown">
-                      {candidateResults.map(c => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className="admin-search__result"
-                          onClick={() => {
-                            setSelectedCandidate(c);
-                            setScheduleForm({
-                              ...scheduleForm,
-                              candidateName: c.name,
-                              candidateEmail: c.email,
-                              candidateId: c.candidateId || ''
-                            });
-                            setCandidateResults([]);
-                            setCandidateQuery(c.name);
-                          }}
-                        >
-                          <div className="admin-search__result-info">
-                            <span className="admin-search__result-name">{c.name}</span>
-                            <span className="admin-search__result-email">{c.email}</span>
-                            {c.candidateId && (
-                              <span className="admin-search__result-id">ID: {c.candidateId}</span>
-                            )}
-                          </div>
-                          <Icons.User />
-                        </button>
-                      ))}
-                    </div>
+                     <div className="admin-search__dropdown">
+                        {candidateResults.map(c => (
+                            <button key={c.id} type="button" className="admin-search__result" onClick={() => {
+                                setSelectedCandidate(c);
+                                setScheduleForm({ ...scheduleForm, candidateName: c.name, candidateEmail: c.email, candidateId: c.candidateId || '' });
+                                setCandidateResults([]);
+                            }}>
+                                <div className="admin-search__result-info">
+                                    <span className="admin-search__result-name">{c.name}</span>
+                                    <span className="admin-search__result-email">{c.email}</span>
+                                </div>
+                            </button>
+                        ))}
+                     </div>
                   )}
                 </div>
 
-                {/* Selected Candidate */}
-                {selectedCandidate && (
-                  <div className="admin-selected-candidate">
-                    <div className="admin-selected-candidate__info">
-                      <div className="admin-selected-candidate__avatar">
-                        <Icons.User />
-                      </div>
-                      <div>
-                        <span className="admin-selected-candidate__name">{selectedCandidate.name}</span>
-                        <span className="admin-selected-candidate__email">{selectedCandidate.email}</span>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="admin-selected-candidate__clear"
-                      onClick={() => {
-                        setSelectedCandidate(null);
-                        setCandidateQuery('');
-                        setScheduleForm({ ...scheduleForm, candidateName: '', candidateEmail: '', candidateId: '' });
-                      }}
-                    >
-                      <Icons.X />
-                    </button>
-                  </div>
-                )}
-
                 <form onSubmit={handleScheduleInterview} className="admin-form">
-                  {!selectedCandidate && (
-                    <>
-                      <div className="admin-form__row">
-                        <div className="admin-input-group">
-                          <label className="admin-label">Name</label>
-                          <input
-                            type="text"
-                            required
-                            className="admin-input"
-                            placeholder="John Doe"
-                            value={scheduleForm.candidateName}
-                            onChange={e => setScheduleForm({ ...scheduleForm, candidateName: e.target.value })}
-                          />
-                        </div>
-                        <div className="admin-input-group">
-                          <label className="admin-label">Candidate ID</label>
-                          <input
-                            type="text"
-                            className="admin-input"
-                            placeholder="Optional"
-                            value={scheduleForm.candidateId}
-                            onChange={e => setScheduleForm({ ...scheduleForm, candidateId: e.target.value })}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="admin-input-group">
-                        <label className="admin-label">Email Address</label>
-                        <input
-                          type="email"
-                          required
-                          className="admin-input"
-                          placeholder="john@example.com"
-                          value={scheduleForm.candidateEmail}
-                          onChange={e => setScheduleForm({ ...scheduleForm, candidateEmail: e.target.value })}
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <div className="admin-input-group">
-                    <label className="admin-label">Interview Template</label>
-                    <select
-                      required
-                      className="admin-select"
-                      value={scheduleForm.templateId}
-                      onChange={e => setScheduleForm({ ...scheduleForm, templateId: e.target.value })}
-                    >
-                      <option value="">Select a template...</option>
-                      {templates.map(t => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} • {t.role} • {t.level}
-                        </option>
-                      ))}
-                    </select>
-                    {templates.length === 0 && (
-                      <p className="admin-input-hint admin-input-hint--warning">
-                        No templates available. Create one first.
-                      </p>
+                    {!selectedCandidate && (
+                        <>
+                            <div className="admin-input-group">
+                                <label className="admin-label">Name</label>
+                                <input type="text" className="admin-input" required value={scheduleForm.candidateName} onChange={e => setScheduleForm({ ...scheduleForm, candidateName: e.target.value })} />
+                            </div>
+                            <div className="admin-input-group">
+                                <label className="admin-label">Email</label>
+                                <input type="email" className="admin-input" required value={scheduleForm.candidateEmail} onChange={e => setScheduleForm({ ...scheduleForm, candidateEmail: e.target.value })} />
+                            </div>
+                        </>
                     )}
-                  </div>
-
-                  <div className="admin-input-group">
-                    <label className="admin-label">Schedule Date & Time</label>
-                    <input
-                      type="datetime-local"
-                      required
-                      min={new Date().toISOString().slice(0, 16)}
-                      className="admin-input"
-                      value={scheduleForm.scheduledAt}
-                      onChange={e => setScheduleForm({ ...scheduleForm, scheduledAt: e.target.value })}
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading.submit || templates.length === 0}
-                    className="admin-btn admin-btn--primary admin-btn--lg admin-btn--full"
-                  >
-                    {loading.submit ? (
-                      <>
-                        <LoadingSpinner size="sm" />
-                        <span>Scheduling...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Icons.Calendar />
-                        <span>Schedule Interview</span>
-                      </>
-                    )}
-                  </button>
+                    <div className="admin-input-group">
+                        <label className="admin-label">Select Drive / Template</label>
+                        <select className="admin-select" required value={scheduleForm.templateId} onChange={e => setScheduleForm({ ...scheduleForm, templateId: e.target.value })}>
+                            <option value="">Choose...</option>
+                            {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="admin-input-group">
+                        <label className="admin-label">Start Date</label>
+                        <input type="datetime-local" className="admin-input" required value={scheduleForm.scheduledAt} onChange={e => setScheduleForm({ ...scheduleForm, scheduledAt: e.target.value })} />
+                    </div>
+                    <button type="submit" disabled={loading.submit} className="admin-btn admin-btn--primary admin-btn--full">Schedule</button>
                 </form>
               </section>
 
               {/* Interview List */}
               <section className="admin-panel admin-panel--large">
-                <div className="admin-panel__header admin-panel__header--simple">
-                  <h2 className="admin-panel__title">Scheduled Interviews</h2>
-                  <div className="admin-badge">{interviews.length} Total</div>
-                </div>
-
-                {loading.interviews ? (
-                  <LoadingSpinner />
-                ) : interviews.length === 0 ? (
-                  <div className="admin-empty-state">
-                    <div className="admin-empty-state__icon">
-                      <Icons.Calendar />
-                    </div>
-                    <p className="admin-empty-state__title">No interviews scheduled</p>
-                    <p className="admin-empty-state__text">Schedule your first interview to get started</p>
-                  </div>
-                ) : (
-                  <div className="admin-interview-list">
+                 <div className="admin-panel__header">
+                    <h2 className="admin-panel__title">Scheduled Interviews</h2>
+                 </div>
+                 <div className="admin-interview-list">
                     {interviews.map(iv => (
-                      <div key={iv.id} className="admin-interview-card">
-                        <div className="admin-interview-card__main">
-                          <div className="admin-interview-card__avatar">
-                            {iv.candidateName.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="admin-interview-card__info">
-                            <h3 className="admin-interview-card__name">{iv.candidateName}</h3>
-                            <p className="admin-interview-card__email">{iv.candidateEmail}</p>
-
-                            <div className="admin-interview-card__meta">
-                              <StatusBadge status={iv.status} />
-
-                              <span className="admin-interview-card__date">
-                                <Icons.Calendar />
-                                {iv.scheduledAt ? new Date(iv.scheduledAt).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                }) : 'Not scheduled'}
-                              </span>
-
-                              {iv.candidateId && (
-                                <span className="admin-interview-card__id">ID: {iv.candidateId}</span>
-                              )}
+                        <div key={iv.id} className="admin-interview-card">
+                            <div className="admin-interview-card__main">
+                                <div className="admin-interview-card__avatar">{iv.candidateName.charAt(0)}</div>
+                                <div className="admin-interview-card__info">
+                                    <h3>{iv.candidateName}</h3>
+                                    <p>{iv.candidateEmail}</p>
+                                    <StatusBadge status={iv.status} />
+                                </div>
                             </div>
-                          </div>
+                            <button className="admin-btn admin-btn--danger-ghost" onClick={() => setDeleteConfirm({ id: iv.id, name: iv.candidateName })}><Icons.Trash /></button>
                         </div>
-
-                        <Link to={`/admin/interview/${iv.id}`} className="admin-btn admin-btn--secondary">
-                          Manage
-                          <Icons.ChevronRight />
-                        </Link>
-                        <button
-                          type="button"
-                          className="admin-btn admin-btn--danger-ghost"
-                          onClick={() => setDeleteConfirm({ id: iv.id, name: iv.candidateName })}
-                          aria-label="Delete interview"
-                        >
-                          <Icons.Trash />
-                        </button>
-
-                      </div>
                     ))}
-                  </div>
-                )}
+                 </div>
               </section>
             </div>
           )}
@@ -1559,7 +1273,6 @@ export function AdminDashboardPage() {
                   {interviews.filter(i => i.status === 'started' || i.status === 'scheduled').length} Active
                 </div>
               </div>
-              {/* Filter for started/scheduled interviews */}
               <LiveInterviewMonitor interviews={interviews.filter(i => i.status === 'scheduled' || i.status === 'started')} />
             </section>
           )}
@@ -1570,50 +1283,28 @@ export function AdminDashboardPage() {
       {deleteConfirm && (
         <div className="admin-modal-backdrop">
           <div className="admin-modal">
-            <div className="admin-modal__icon admin-modal__icon--danger">
-              <Icons.Trash />
-            </div>
-
             <h2 className="admin-modal__title">Delete Interview?</h2>
-
-            <p className="admin-modal__description">
-              Are you sure you want to delete the interview for <strong>{deleteConfirm.name}</strong>?
-              This will permanently remove all associated data including recordings and proctor logs.
-            </p>
-
-            <div className="admin-modal__warning">
-              <Icons.AlertCircle />
-              <span>This action cannot be undone</span>
-            </div>
-
+            <p className="admin-modal__description">Are you sure you want to delete the interview for <strong>{deleteConfirm.name}</strong>?</p>
             <div className="admin-modal__actions">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                disabled={deleting}
-                className="admin-btn admin-btn--secondary"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDeleteInterview(deleteConfirm.id)}
-                disabled={deleting}
-                className="admin-btn admin-btn--danger"
-              >
-                {deleting ? (
-                  <>
-                    <LoadingSpinner size="sm" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Icons.Trash />
-                    <span>Delete Interview</span>
-                  </>
-                )}
-              </button>
+              <button onClick={() => setDeleteConfirm(null)} className="admin-btn admin-btn--secondary">Cancel</button>
+              <button onClick={() => handleDeleteInterview(deleteConfirm.id)} className="admin-btn admin-btn--danger">Delete</button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Template Delete Confirmation Modal */}
+      {templateDeleteConfirm && (
+         <div className="admin-modal-backdrop">
+             <div className="admin-modal">
+                 <h2 className="admin-modal__title">Delete Template?</h2>
+                 <p className="admin-modal__description">Delete <strong>{templateDeleteConfirm.name}</strong>?</p>
+                 <div className="admin-modal__actions">
+                     <button onClick={() => setTemplateDeleteConfirm(null)} className="admin-btn admin-btn--secondary">Cancel</button>
+                     <button onClick={() => handleDeleteTemplate(templateDeleteConfirm.id)} className="admin-btn admin-btn--danger">Delete</button>
+                 </div>
+             </div>
+         </div>
       )}
 
       {/* Toast */}
