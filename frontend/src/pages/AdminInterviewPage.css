@@ -1698,3 +1698,283 @@
       margin-top: var(--space-6);
     }
   }
+
+  /* ============================================
+   LIVE MONITOR & GRID LAYOUT
+   ============================================ */
+
+.admin-monitor-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  height: 100%;
+  width: 100%;
+}
+
+.admin-monitor-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-secondary);
+}
+
+/* THE GRID: Auto-fill with a minimum width of 280px */
+.admin-monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+  padding-bottom: var(--space-6);
+}
+
+/* Individual Camera Feed Card */
+.admin-feed-card {
+  position: relative;
+  aspect-ratio: 16/9;
+  background: #000;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-primary);
+  transition: transform var(--duration-fast) var(--ease-out), 
+              box-shadow var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.admin-feed-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent-primary);
+  z-index: 5;
+}
+
+/* LiveKit Room Container inside Card */
+.admin-feed-room {
+  width: 100%;
+  height: 100%;
+}
+
+/* Video Element */
+.admin-feed-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #1c1c1e;
+}
+
+/* Feed Overlay (Name & Badge) */
+.admin-feed-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+
+.admin-feed-name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+.admin-feed-live-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  background: var(--error);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: var(--font-bold);
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  animation: admin-pulse-red 2s infinite;
+}
+
+@keyframes admin-pulse-red {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Placeholders & Errors */
+.admin-feed-placeholder,
+.admin-feed-loading,
+.admin-feed-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.6);
+  font-size: var(--text-sm);
+  background: #1c1c1e;
+  text-align: center;
+  padding: var(--space-2);
+}
+
+.admin-feed-error {
+  color: var(--error);
+  background: rgba(255, 59, 48, 0.05);
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ============================================
+   FULLSCREEN MODAL VIEW
+   ============================================ */
+
+.admin-modal-fullscreen {
+  position: fixed;
+  inset: var(--space-4); /* 16px margin around */
+  background: #000;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  z-index: 1000;
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255,255,255,0.1);
+  animation: admin-scaleIn 0.3s var(--spring);
+}
+
+.admin-modal-close {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-5);
+  z-index: 1010;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: rgba(40, 40, 40, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-full);
+  color: white;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  transition: all 0.2s;
+}
+
+.admin-modal-close:hover {
+  background: rgba(60, 60, 60, 0.8);
+  transform: translateY(-1px);
+}
+
+.admin-fullscreen-room {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.admin-fullscreen-video-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.admin-fullscreen-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* Ensure whole video is seen without cropping */
+}
+
+.admin-fullscreen-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-8) var(--space-8) var(--space-6);
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
+  color: white;
+  pointer-events: none;
+}
+
+.admin-fullscreen-info h2 {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  margin-bottom: var(--space-1);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.admin-fullscreen-info p {
+  font-size: var(--text-base);
+  color: rgba(255,255,255,0.8);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-fullscreen-info p::before {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 8px;
+  background: var(--error);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--error);
+}
+
+/* ============================================
+   PAGINATION CONTROLS
+   ============================================ */
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.admin-pagination button {
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin-pagination button:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.admin-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--bg-tertiary);
+}
+
+.admin-pagination span {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
