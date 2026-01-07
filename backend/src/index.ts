@@ -26,6 +26,7 @@ import judgeRoutes from "../src/routes/judge.routes";
 import verifyRoutes from "../src/routes/verify.routes";
 import previewRoutes from "../src/routes/preview.routes";
 import livekitRoutes from "../src/routes/livekit.routes";
+import crypto from 'crypto';
 
 const execAsync = promisify(exec);
 
@@ -92,7 +93,7 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
     if (!name || !email || !password || !role) {
       return res.status(400).json({ error: 'name, email, password, role required' });
     }
-    if (!['CANDIDATE', 'INTERVIEWER'].includes(role)) {
+    if (!['CANDIDATE', 'INTERVIEWER', 'COLLEGE'].includes(role)) {
       return res.status(400).json({ error: 'invalid_role' });
     }
 
@@ -238,14 +239,23 @@ app.get('/api/interviews/:id/config', async (req: Request, res: Response) => {
   };
 
   const proctorConfig = cfg.proctor || defaultProctor;
-  const questions = Array.isArray(cfg.questions) ? cfg.questions : [];
+
+  // [FIX] Extract questions from 'rounds' if available, otherwise use legacy 'questions'
+  let questions: any[] = [];
+
+  if (Array.isArray(cfg.rounds) && cfg.rounds.length > 0) {
+    // Flatten all questions from all rounds into a single list for the exam interface
+    questions = cfg.rounds.flatMap((r: any) => r.questions || []);
+  } else if (Array.isArray(cfg.questions)) {
+    // Legacy support
+    questions = cfg.questions;
+  }
 
   res.json({
-    // ... existing response fields
     id: interview.id,
     candidateName: interview.candidateName,
     status: interview.status,
-    questions,       // Now serves dynamic questions
+    questions,       // This will now contain the questions from your rounds
     proctorConfig,
   });
 });
@@ -430,51 +440,51 @@ app.post('/api/admin/templates', authMiddleware, requireRole('INTERVIEWER'), asy
 );
 
 // Delete an interview template (INTERVIEWER only)
-app.delete('/api/admin/templates/:id',authMiddleware,requireRole('INTERVIEWER'),async (req: AuthRequest, res: Response) => {
-    const { id } = req.params;
+app.delete('/api/admin/templates/:id', authMiddleware, requireRole('INTERVIEWER'), async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
 
-    try {
-      // 1️⃣ Check if template exists
-      const template = await prisma.interviewTemplate.findUnique({
-        where: { id },
-      });
+  try {
+    // 1️⃣ Check if template exists
+    const template = await prisma.interviewTemplate.findUnique({
+      where: { id },
+    });
 
-      if (!template) {
-        return res.status(404).json({ error: 'template_not_found' });
-      }
-
-      // 2️⃣ Check if template is used by any interviews
-      const usageCount = await prisma.interview.count({
-        where: { templateId: id },
-      });
-
-      if (usageCount > 0) {
-        return res.status(409).json({
-          error: 'template_in_use',
-          message: 'Cannot delete template. It is used by existing interviews.',
-          interviewsUsingTemplate: usageCount,
-        });
-      }
-
-      // 3️⃣ Safe to delete
-      await prisma.interviewTemplate.delete({
-        where: { id },
-      });
-
-      res.json({
-        ok: true,
-        message: 'Template deleted successfully',
-      });
-    } catch (e) {
-      console.error('Delete template error', e);
-      res.status(500).json({ error: 'internal_error' });
+    if (!template) {
+      return res.status(404).json({ error: 'template_not_found' });
     }
+
+    // 2️⃣ Check if template is used by any interviews
+    const usageCount = await prisma.interview.count({
+      where: { templateId: id },
+    });
+
+    if (usageCount > 0) {
+      return res.status(409).json({
+        error: 'template_in_use',
+        message: 'Cannot delete template. It is used by existing interviews.',
+        interviewsUsingTemplate: usageCount,
+      });
+    }
+
+    // 3️⃣ Safe to delete
+    await prisma.interviewTemplate.delete({
+      where: { id },
+    });
+
+    res.json({
+      ok: true,
+      message: 'Template deleted successfully',
+    });
+  } catch (e) {
+    console.error('Delete template error', e);
+    res.status(500).json({ error: 'internal_error' });
   }
+}
 );
 
 
 // Search candidates (by name, email, or candidateId)
-app.get('/api/admin/candidates', authMiddleware, requireRole('INTERVIEWER'), async (req: AuthRequest, res: Response) => {
+app.get('/api/admin/candidates', authMiddleware, requireRole(['INTERVIEWER', 'COLLEGE']), async (req: AuthRequest, res: Response) => {
   const q = String(req.query.query || '').trim();
   if (!q) return res.json([]);
 
@@ -503,13 +513,12 @@ app.get('/api/admin/candidates', authMiddleware, requireRole('INTERVIEWER'), asy
 );
 
 // List templates
-app.get('/api/admin/templates', authMiddleware, requireRole('INTERVIEWER'), async (_req: AuthRequest, res: Response) => {
+app.get('/api/admin/templates', authMiddleware, requireRole(['INTERVIEWER', 'COLLEGE']), async (_req: AuthRequest, res: Response) => {
   const templates = await prisma.interviewTemplate.findMany({
     orderBy: { createdAt: 'desc' },
   });
   res.json(templates);
-}
-);
+});
 
 // Get a single template
 app.get('/api/admin/templates/:id', authMiddleware, requireRole('INTERVIEWER'), async (req: AuthRequest, res: Response) => {
@@ -567,14 +576,18 @@ app.post('/api/admin/interviews', authMiddleware, requireRole('INTERVIEWER'), as
 );
 
 // List interviews (for admin dashboard)
-app.get('/api/admin/interviews', authMiddleware, requireRole('INTERVIEWER'), async (_req: AuthRequest, res: Response) => {
+app.get('/api/admin/interviews', authMiddleware, requireRole(['INTERVIEWER', 'COLLEGE']), async (req: AuthRequest, res: Response) => {
   const interviews = await prisma.interview.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { template: true },
+    include: {
+      template: true,
+      interviewer: {           // [NEW] Fetch Company Details
+        select: { name: true, email: true }
+      }
+    },
   });
   res.json(interviews);
-}
-);
+});
 
 // Update the 'Update interview' endpoint (approx line 370)
 app.put('/api/admin/interviews/:id', authMiddleware, requireRole('INTERVIEWER'), async (req: AuthRequest, res: Response) => {
@@ -627,12 +640,12 @@ app.delete('/api/admin/interviews/:id', authMiddleware, requireRole('INTERVIEWER
     res.json({ ok: true, message: 'Interview deleted successfully' });
   } catch (e: any) {
     console.error('Delete interview error', e);
-    
+
     // P2025 is the Prisma error code for "Record to delete does not exist"
     if (e.code === 'P2025') {
       return res.status(404).json({ error: 'Interview not found' });
     }
-    
+
     res.status(500).json({ error: 'internal_error' });
   }
 });
@@ -961,12 +974,12 @@ ${code}
 
 app.post('/api/interviews/:id/resume', upload.single('resume'), async (req: Request, res: Response) => {
   const { id } = req.params;
-  
+
   if (!req.file) return res.status(400).json({ error: 'PDF resume required' });
 
   try {
     console.log(`[Resume] Starting Deep Scan for ${id}...`);
-    
+
     // 1. Run Python Script to Parse Resume
     const scanResult = await ResumeService.parseResume(req.file.path);
 
@@ -975,7 +988,7 @@ app.post('/api/interviews/:id/resume', upload.single('resume'), async (req: Requ
     // ---------------------------------------------------------
     // Create a file path with .json extension (e.g., "123-resume.pdf.json")
     const jsonOutputPath = `${req.file.path}.json`;
-    
+
     // Write the JSON result to the filesystem
     fs.writeFileSync(jsonOutputPath, JSON.stringify(scanResult, null, 2));
     console.log(`[Resume] Saved parsed output to: ${jsonOutputPath}`);
@@ -985,7 +998,7 @@ app.post('/api/interviews/:id/resume', upload.single('resume'), async (req: Requ
     await prisma.interview.update({
       where: { id },
       data: {
-        resumeData: scanResult 
+        resumeData: scanResult
       }
     });
 
@@ -1004,16 +1017,139 @@ app.post('/api/voice/synthesize', async (req: Request, res: Response) => {
   try {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: 'Text required' });
-    
+
     // Call Hume service
     const result = await synthesizeRajeshVoice(text);
-    
+
     // Returns: { audioPath: "/ai-voice/filename.mp3" }
     res.json(result);
   } catch (err: any) {
     console.error("Voice synthesis error:", err);
     res.status(500).json({ error: err.message || "Synthesis failed" });
   }
+});
+
+// ==========================================
+// VIT PLACEMENT WORKFLOW API
+// ==========================================
+
+// 1. CREATE LEAD & AUTO-CLASSIFY TIER
+app.post('/api/college/outreach', authMiddleware, requireRole('COLLEGE'), async (req: AuthRequest, res: Response) => {
+  const { companyName, email, contactPerson, ctc } = req.body;
+  
+  // VIT Logic: Auto-assign Tier based on CTC
+  let tier = 'Regular';
+  if (ctc >= 10) tier = 'Super Dream';
+  else if (ctc >= 6) tier = 'Dream';
+
+  try {
+    const record = await prisma.companyOutreach.create({
+      data: {
+        companyName,
+        email,
+        contactPerson,
+        ctc: parseFloat(ctc),
+        tier,
+        status: 'contacted',
+        timeline: [
+          { date: new Date().toISOString(), title: 'Lead Created', description: `Classified as ${tier} based on ${ctc} LPA.` }
+        ]
+      }
+    });
+    res.json(record);
+  } catch (e) {
+    res.status(400).json({ error: 'Company already exists' });
+  }
+});
+
+// 2. GET PIPELINE (With Slot Sorting)
+app.get('/api/college/outreach', authMiddleware, requireRole('COLLEGE'), async (req: AuthRequest, res: Response) => {
+  const records = await prisma.companyOutreach.findMany({
+    orderBy: [
+      { slot: 'asc' },       // Show Slot 1 first
+      { driveDate: 'asc' }   // Then by Date
+    ]
+  });
+  res.json(records);
+});
+
+// 3. FINALIZE SLOT & ONBOARD (Generate Login)
+app.post('/api/college/outreach/:id/onboard', authMiddleware, requireRole('COLLEGE'), async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { slot, driveDate } = req.body; // e.g., "Slot 1", "2026-09-15"
+
+  try {
+    const record = await prisma.companyOutreach.findUnique({ where: { id } });
+    if (!record) return res.status(404).json({ error: 'Not found' });
+
+    // A. Generate Credentials
+    const generatedPassword = Math.random().toString(36).slice(-8); // Simple random pass
+    // In real app, hash this!
+    // const passwordHash = await hashPassword(generatedPassword);
+    
+    // For demo, we just simulate the user creation:
+    // const user = await prisma.user.create(...) 
+    
+    // B. Update Outreach Record with Slot
+    const updated = await prisma.companyOutreach.update({
+      where: { id },
+      data: {
+        status: 'scheduled',
+        slot,
+        driveDate: new Date(driveDate),
+        timeline: [...(record.timeline as any[]), { date: new Date().toISOString(), title: 'Slot Allocated', description: `Assigned ${slot} on ${driveDate}` }]
+      }
+    });
+
+    res.json({ success: true, credentials: { email: record.email, password: generatedPassword } });
+  } catch (e) {
+    res.status(500).json({ error: 'Error onboarding' });
+  }
+});
+
+// 4. STUDENT PORTAL: GET UPCOMING DRIVES
+app.get('/api/candidate/drives', authMiddleware, requireRole('CANDIDATE'), async (req: AuthRequest, res: Response) => {
+  // Return only Scheduled/Accepted companies
+  const drives = await prisma.companyOutreach.findMany({
+    where: { status: 'scheduled' },
+    orderBy: { driveDate: 'asc' }
+  });
+  res.json(drives);
+});
+
+// 5. STUDENT PORTAL: APPLY FOR DRIVE
+app.post('/api/candidate/apply/:outreachId', authMiddleware, requireRole('CANDIDATE'), async (req: AuthRequest, res: Response) => {
+    // In a real app, this would check eligibility (CGPA vs Cutoff)
+    // and create an 'Interview' record linked to the company's template
+    res.json({ success: true, message: "Applied successfully. Check dashboard for schedule." });
+});
+
+// 6. Add a timeline event (Log interaction)
+app.post('/api/college/outreach/:id/timeline', authMiddleware, requireRole('COLLEGE'), async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { title, description, status } = req.body; // Status update is optional
+
+  const record = await prisma.companyOutreach.findUnique({ where: { id } });
+  if (!record) return res.status(404).json({ error: 'Not found' });
+
+  const currentTimeline = (record.timeline as any[]) || [];
+  const newEvent = {
+    date: new Date().toISOString(),
+    title: title || 'Update',
+    description: description || ''
+  };
+
+  const updateData: any = {
+    timeline: [...currentTimeline, newEvent]
+  };
+  if (status) updateData.status = status;
+
+  const updated = await prisma.companyOutreach.update({
+    where: { id },
+    data: updateData
+  });
+
+  res.json(updated);
 });
 
 // ======================

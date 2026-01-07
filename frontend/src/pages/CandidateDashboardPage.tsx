@@ -18,8 +18,17 @@ type CandidateInterview = {
     role: string;
     level: string;
   } | null;
-  // Optional: If you update backend to return this flag, you can conditionally show "Update" vs "Upload"
   hasResume?: boolean; 
+};
+
+type PlacementDrive = {
+  id: string;
+  companyName: string;
+  tier: 'Super Dream' | 'Dream' | 'Regular';
+  ctc: number;
+  driveDate: string;
+  slot: string;
+  status: string;
 };
 
 // ============================================
@@ -56,12 +65,6 @@ const Icons = {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
       <polyline points="16,17 21,12 16,7"/>
       <line x1="21" y1="12" x2="9" y2="12"/>
-    </svg>
-  ),
-  User: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-      <circle cx="12" cy="7" r="4"/>
     </svg>
   ),
   Briefcase: () => (
@@ -117,6 +120,11 @@ const Icons = {
       <line x1="12" y1="3" x2="12" y2="15"/>
     </svg>
   ),
+  Search: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+  )
 };
 
 // ============================================
@@ -164,7 +172,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 // EMPTY STATE
 // ============================================
 
-const EmptyState = () => (
+const EmptyState = ({ message }: { message?: string }) => (
   <div className="candidate-empty">
     <div className="candidate-empty__illustration">
       <div className="candidate-empty__circle candidate-empty__circle--1" />
@@ -173,25 +181,10 @@ const EmptyState = () => (
         <Icons.Calendar />
       </div>
     </div>
-    <h2 className="candidate-empty__title">No Interviews Yet</h2>
+    <h2 className="candidate-empty__title">No Items Found</h2>
     <p className="candidate-empty__text">
-      You don't have any scheduled interviews at the moment.
-      Check back later or contact your recruiter.
+      {message || "You don't have any scheduled interviews at the moment."}
     </p>
-    <div className="candidate-empty__tips">
-      <div className="candidate-empty__tip">
-        <Icons.CheckCircle />
-        <span>Ensure your profile is complete</span>
-      </div>
-      <div className="candidate-empty__tip">
-        <Icons.CheckCircle />
-        <span>Check your email for invitations</span>
-      </div>
-      <div className="candidate-empty__tip">
-        <Icons.CheckCircle />
-        <span>Prepare your camera and microphone</span>
-      </div>
-    </div>
   </div>
 );
 
@@ -409,37 +402,68 @@ const InterviewCard = ({ interview }: { interview: CandidateInterview }) => {
 
 export function CandidateDashboardPage() {
   const { user, token, logout } = useAuth();
+  
+  // TABS STATE
+  const [activeTab, setActiveTab] = useState<'interviews' | 'drives'>('interviews');
+
+  // DATA STATE
   const [interviews, setInterviews] = useState<CandidateInterview[]>([]);
+  const [drives, setDrives] = useState<PlacementDrive[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load Data
   useEffect(() => {
     if (!token) return;
 
-    const loadInterviews = async () => {
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const res = await fetch(`${API_BASE}/api/me/interviews`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          console.error('Load interviews error', data);
-          setError('Failed to load interviews');
-          return;
+        if (activeTab === 'interviews') {
+           const res = await fetch(`${API_BASE}/api/me/interviews`, {
+             headers: { Authorization: `Bearer ${token}` },
+           });
+           if (!res.ok) throw new Error('Failed to load interviews');
+           setInterviews(await res.json());
+        } else {
+           const res = await fetch(`${API_BASE}/api/candidate/drives`, {
+             headers: { Authorization: `Bearer ${token}` },
+           });
+           if (!res.ok) throw new Error('Failed to load drives');
+           setDrives(await res.json());
         }
-
-        setInterviews(data);
-      } catch (e) {
-        console.error('Error loading interviews', e);
-        setError('Network error. Please try again.');
+      } catch (e: any) {
+        console.error('Error loading data', e);
+        setError(e.message || 'Network error');
       } finally {
         setLoading(false);
       }
     };
 
-    loadInterviews();
-  }, [token]);
+    loadData();
+  }, [token, activeTab]);
+
+  const handleApplyToDrive = async (outreachId: string) => {
+      if(!token) return;
+      if(!confirm("Are you sure you want to apply? Your profile and resume will be sent to the company.")) return;
+
+      try {
+          const res = await fetch(`${API_BASE}/api/candidate/apply/${outreachId}`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if(res.ok) {
+              alert(data.message || "Application successful!");
+          } else {
+              alert(data.error || "Failed to apply.");
+          }
+      } catch(e) {
+          alert("Network error.");
+      }
+  };
 
   // Separate interviews by status
   const upcomingInterviews = interviews.filter(
@@ -453,14 +477,8 @@ export function CandidateDashboardPage() {
     return (
       <div className="candidate-page">
         <div className="candidate-access-denied">
-          <div className="candidate-access-denied__icon">
-            <Icons.AlertCircle />
-          </div>
           <h2>Not Logged In</h2>
-          <p>Please log in to view your interviews.</p>
-          <Link to="/login" className="candidate-btn candidate-btn--primary">
-            Go to Login
-          </Link>
+          <Link to="/login" className="candidate-btn candidate-btn--primary">Go to Login</Link>
         </div>
       </div>
     );
@@ -478,9 +496,26 @@ export function CandidateDashboardPage() {
               <Icons.Sparkles />
             </div>
             <div className="candidate-nav__brand">
-              <h1 className="candidate-nav__title">My Interviews</h1>
-              <p className="candidate-nav__subtitle">Candidate Portal</p>
+              <h1 className="candidate-nav__title">Portal</h1>
+              <p className="candidate-nav__subtitle">Student Dashboard</p>
             </div>
+          </div>
+
+          <div className="candidate-nav__center">
+             <div className="candidate-nav__tabs">
+                <button 
+                  onClick={() => setActiveTab('interviews')}
+                  className={`candidate-nav__tab ${activeTab === 'interviews' ? 'candidate-nav__tab--active' : ''}`}
+                >
+                    <Icons.Briefcase /> My Interviews
+                </button>
+                <button 
+                  onClick={() => setActiveTab('drives')}
+                  className={`candidate-nav__tab ${activeTab === 'drives' ? 'candidate-nav__tab--active' : ''}`}
+                >
+                    <Icons.Search /> Placement Drives
+                </button>
+             </div>
           </div>
 
           <div className="candidate-nav__right">
@@ -490,13 +525,10 @@ export function CandidateDashboardPage() {
               </div>
               <div className="candidate-nav__user-info">
                 <span className="candidate-nav__user-name">{user.name}</span>
-                <span className="candidate-nav__user-email">{user.email}</span>
               </div>
             </div>
-
             <button onClick={logout} className="candidate-nav__logout">
               <Icons.LogOut />
-              <span>Sign Out</span>
             </button>
           </div>
         </div>
@@ -512,147 +544,125 @@ export function CandidateDashboardPage() {
           <section className="candidate-welcome">
             <div className="candidate-welcome__content">
               <h2 className="candidate-welcome__title">
-                Welcome back, {user.name.split(' ')[0]}! 👋
+                Welcome, {user.name.split(' ')[0]}!
               </h2>
               <p className="candidate-welcome__text">
-                {upcomingInterviews.length > 0
-                  ? `You have ${upcomingInterviews.length} upcoming interview${upcomingInterviews.length !== 1 ? 's' : ''}.`
-                  : 'Check below for your interview schedule.'
+                {activeTab === 'interviews' 
+                  ? "Here is your interview schedule."
+                  : "Explore and apply to upcoming placement drives."
                 }
               </p>
             </div>
-
-            <div className="candidate-welcome__stats">
-              <div className="candidate-stat-card">
-                <div className="candidate-stat-card__icon candidate-stat-card__icon--blue">
-                  <Icons.Calendar />
+            {/* Conditional Stats */}
+            {activeTab === 'interviews' && (
+                <div className="candidate-welcome__stats">
+                    <div className="candidate-stat-card">
+                        <div className="candidate-stat-card__icon candidate-stat-card__icon--blue"><Icons.Calendar /></div>
+                        <div className="candidate-stat-card__content">
+                            <span className="candidate-stat-card__value">{upcomingInterviews.length}</span>
+                            <span className="candidate-stat-card__label">Upcoming</span>
+                        </div>
+                    </div>
                 </div>
-                <div className="candidate-stat-card__content">
-                  <span className="candidate-stat-card__value">{upcomingInterviews.length}</span>
-                  <span className="candidate-stat-card__label">Upcoming</span>
-                </div>
-              </div>
-
-              <div className="candidate-stat-card">
-                <div className="candidate-stat-card__icon candidate-stat-card__icon--green">
-                  <Icons.CheckCircle />
-                </div>
-                <div className="candidate-stat-card__content">
-                  <span className="candidate-stat-card__value">{pastInterviews.length}</span>
-                  <span className="candidate-stat-card__label">Completed</span>
-                </div>
-              </div>
-            </div>
+            )}
           </section>
 
-          {/* Loading State */}
-          {loading && (
-            <div className="candidate-loading">
-              <LoadingSpinner />
-              <p>Loading your interviews...</p>
-            </div>
+          {/* Loading / Error */}
+          {loading && <div className="candidate-loading"><LoadingSpinner /><p>Loading...</p></div>}
+          {error && !loading && <div className="candidate-error"><Icons.AlertCircle /><p>{error}</p></div>}
+
+          {/* --- TAB 1: MY INTERVIEWS --- */}
+          {!loading && !error && activeTab === 'interviews' && (
+             <>
+                {interviews.length === 0 && <EmptyState />}
+                
+                {upcomingInterviews.length > 0 && (
+                    <section className="candidate-section">
+                    <div className="candidate-section__header">
+                        <h2 className="candidate-section__title">
+                        <span className="candidate-section__icon candidate-section__icon--blue"><Icons.Calendar /></span>
+                        Upcoming
+                        </h2>
+                    </div>
+                    <div className="candidate-section__grid">
+                        {upcomingInterviews.map(interview => (
+                        <InterviewCard key={interview.id} interview={interview} />
+                        ))}
+                    </div>
+                    </section>
+                )}
+
+                {pastInterviews.length > 0 && (
+                    <section className="candidate-section">
+                    <div className="candidate-section__header">
+                        <h2 className="candidate-section__title">
+                        <span className="candidate-section__icon candidate-section__icon--gray"><Icons.Clock /></span>
+                        History
+                        </h2>
+                    </div>
+                    <div className="candidate-section__grid">
+                        {pastInterviews.map(interview => (
+                        <InterviewCard key={interview.id} interview={interview} />
+                        ))}
+                    </div>
+                    </section>
+                )}
+             </>
           )}
 
-          {/* Error State */}
-          {error && !loading && (
-            <div className="candidate-error">
-              <Icons.AlertCircle />
-              <p>{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="candidate-btn candidate-btn--secondary"
-              >
-                Try Again
-              </button>
-            </div>
+          {/* --- TAB 2: PLACEMENT DRIVES --- */}
+          {!loading && !error && activeTab === 'drives' && (
+             <>
+               {drives.length === 0 && <EmptyState message="No placement drives are currently open for applications." />}
+               
+               <div className="candidate-section__grid">
+                   {drives.map(drive => (
+                       <div key={drive.id} className="candidate-card" style={{ borderTop: `4px solid ${drive.tier === 'Super Dream' ? '#ec4899' : '#3b82f6'}` }}>
+                           <div className="candidate-card__header">
+                               <div className="candidate-card__title-group">
+                                    <h3 className="candidate-card__title" style={{ fontSize: '1.25rem' }}>{drive.companyName}</h3>
+                                    <span className="candidate-card__role" style={{ color: drive.tier === 'Super Dream' ? '#ec4899' : '#3b82f6', fontWeight: 'bold' }}>
+                                        {drive.tier}
+                                    </span>
+                               </div>
+                               <div className="candidate-card__icon" style={{ background: '#f1f5f9' }}>
+                                   <Icons.Briefcase />
+                               </div>
+                           </div>
+
+                           <div className="candidate-card__details" style={{ marginTop: '1rem' }}>
+                               <div className="candidate-card__detail">
+                                   <span className="candidate-card__detail-value" style={{ fontSize: '1.5rem', fontWeight: 'bold', color:'#334155' }}>
+                                       ₹{drive.ctc} LPA
+                                   </span>
+                               </div>
+                               <div className="candidate-card__detail">
+                                   <span className="candidate-card__detail-icon"><Icons.Calendar /></span>
+                                   <span className="candidate-card__detail-label">Date:</span>
+                                   <span className="candidate-card__detail-value">{new Date(drive.driveDate).toLocaleDateString()}</span>
+                               </div>
+                               <div className="candidate-card__detail">
+                                   <span className="candidate-card__detail-icon"><Icons.Clock /></span>
+                                   <span className="candidate-card__detail-label">Slot:</span>
+                                   <span className="candidate-card__detail-value">{drive.slot}</span>
+                               </div>
+                           </div>
+
+                           <div className="candidate-card__footer">
+                               <button 
+                                 className="candidate-btn candidate-btn--primary" 
+                                 style={{ width: '100%', justifyContent: 'center' }}
+                                 onClick={() => handleApplyToDrive(drive.id)}
+                               >
+                                   Apply Now <Icons.ChevronRight />
+                               </button>
+                           </div>
+                       </div>
+                   ))}
+               </div>
+             </>
           )}
 
-          {/* Empty State */}
-          {!loading && !error && interviews.length === 0 && (
-            <EmptyState />
-          )}
-
-          {/* Upcoming Interviews */}
-          {!loading && !error && upcomingInterviews.length > 0 && (
-            <section className="candidate-section">
-              <div className="candidate-section__header">
-                <h2 className="candidate-section__title">
-                  <span className="candidate-section__icon candidate-section__icon--blue">
-                    <Icons.Calendar />
-                  </span>
-                  Upcoming Interviews
-                </h2>
-                <span className="candidate-section__count">{upcomingInterviews.length}</span>
-              </div>
-
-              <div className="candidate-section__grid">
-                {upcomingInterviews.map(interview => (
-                  <InterviewCard key={interview.id} interview={interview} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Past Interviews */}
-          {!loading && !error && pastInterviews.length > 0 && (
-            <section className="candidate-section">
-              <div className="candidate-section__header">
-                <h2 className="candidate-section__title">
-                  <span className="candidate-section__icon candidate-section__icon--gray">
-                    <Icons.Clock />
-                  </span>
-                  Past Interviews
-                </h2>
-                <span className="candidate-section__count">{pastInterviews.length}</span>
-              </div>
-
-              <div className="candidate-section__grid">
-                {pastInterviews.map(interview => (
-                  <InterviewCard key={interview.id} interview={interview} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Tips Card */}
-          {!loading && !error && upcomingInterviews.length > 0 && (
-            <section className="candidate-tips">
-              <div className="candidate-tips__header">
-                <Icons.Sparkles />
-                <h3>Interview Tips</h3>
-              </div>
-              <div className="candidate-tips__grid">
-                <div className="candidate-tip">
-                  <div className="candidate-tip__number">1</div>
-                  <div className="candidate-tip__content">
-                    <h4>Test Your Setup</h4>
-                    <p>Ensure your camera and microphone are working before the interview.</p>
-                  </div>
-                </div>
-                <div className="candidate-tip">
-                  <div className="candidate-tip__number">2</div>
-                  <div className="candidate-tip__content">
-                    <h4>Find a Quiet Space</h4>
-                    <p>Choose a well-lit, quiet environment with minimal distractions.</p>
-                  </div>
-                </div>
-                <div className="candidate-tip">
-                  <div className="candidate-tip__number">3</div>
-                  <div className="candidate-tip__content">
-                    <h4>Join Early</h4>
-                    <p>Log in 5-10 minutes before your scheduled time to settle in.</p>
-                  </div>
-                </div>
-                <div className="candidate-tip">
-                  <div className="candidate-tip__number">4</div>
-                  <div className="candidate-tip__content">
-                    <h4>Stay Focused</h4>
-                    <p>Keep your eyes on the screen and avoid switching tabs during the interview.</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
         </div>
       </main>
 
@@ -660,7 +670,7 @@ export function CandidateDashboardPage() {
           FOOTER
           ================================ */}
       <footer className="candidate-footer">
-        <p>Need help? Contact support at <a href="mailto:support@interview.ai">support@interview.ai</a></p>
+        <p>Need help? Contact <a href="mailto:cdc@vit.ac.in">Placement Cell</a></p>
       </footer>
     </div>
   );

@@ -105,8 +105,11 @@ export function LoginPage() {
       
       login(data.token, data.user);
       
+      // Update redirection based on role
       if (data.user.role === 'INTERVIEWER') {
         navigate('/interviewer/dashboard');
+      } else if (data.user.role === 'COLLEGE') {
+        navigate('/college/dashboard');
       } else {
         navigate('/candidate/dashboard');
       }

@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Request, Response, NextFunction } from 'express';
-import { prisma } from './prisma';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
@@ -21,7 +20,7 @@ export function signToken(payload: object) {
 export interface AuthRequest extends Request {
   user?: {
     id: string;
-    role: 'CANDIDATE' | 'INTERVIEWER';
+    role: 'CANDIDATE' | 'INTERVIEWER' | 'COLLEGE'; // [UPDATED]
     email: string;
   };
 }
@@ -45,9 +44,10 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   }
 }
 
-export function requireRole(role: 'CANDIDATE' | 'INTERVIEWER') {
+export function requireRole(roles: string | string[]) {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user || req.user.role !== role) {
+    const allowed = Array.isArray(roles) ? roles : [roles];
+    if (!req.user || !allowed.includes(req.user.role)) {
       return res.status(403).json({ error: 'forbidden' });
     }
     next();

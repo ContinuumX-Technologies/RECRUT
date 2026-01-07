@@ -31,6 +31,21 @@ const Icons = {
       <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
     </svg>
   ),
+  Building: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+      <line x1="9" y1="22" x2="9" y2="22" />
+      <line x1="15" y1="22" x2="15" y2="22" />
+      <line x1="12" y1="22" x2="12" y2="22" />
+      <line x1="12" y1="18" x2="12" y2="18" />
+      <line x1="8" y1="6" x2="8" y2="6" />
+      <line x1="16" y1="6" x2="16" y2="6" />
+      <line x1="8" y1="10" x2="8" y2="10" />
+      <line x1="16" y1="10" x2="16" y2="10" />
+      <line x1="8" y1="14" x2="8" y2="14" />
+      <line x1="16" y1="14" x2="16" y2="14" />
+    </svg>
+  ),
   Mail: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
@@ -110,7 +125,7 @@ export function RegisterPage() {
     name: '',
     email: '',
     password: '',
-    role: 'CANDIDATE' as 'CANDIDATE' | 'INTERVIEWER',
+    role: 'CANDIDATE' as 'CANDIDATE' | 'INTERVIEWER' | 'COLLEGE',
     candidateId: '',
   });
 
@@ -130,7 +145,14 @@ export function RegisterPage() {
       if (!res.ok) throw new Error(data.error || 'Registration failed');
       
       login(data.token, data.user);
-      navigate(data.user.role === 'INTERVIEWER' ? '/interviewer/dashboard' : '/candidate/dashboard');
+      
+      if (data.user.role === 'INTERVIEWER') {
+        navigate('/interviewer/dashboard');
+      } else if (data.user.role === 'COLLEGE') {
+        navigate('/college/dashboard');
+      } else {
+        navigate('/candidate/dashboard');
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -245,7 +267,7 @@ export function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setForm({ ...form, role: 'INTERVIEWER' })}
-                className={`register-role-btn register-role-btn--interviewer ${form.role === 'INTERVIEWER' ? 'register-role-btn--active' : ''}`}
+                className={`register-role-btn ${form.role === 'INTERVIEWER' ? 'register-role-btn--active' : ''}`}
               >
                 <span className="register-role-btn__icon">
                   <Icons.Briefcase />
@@ -253,6 +275,23 @@ export function RegisterPage() {
                 <span className="register-role-btn__label">Interviewer</span>
                 <span className="register-role-btn__desc">Conduct interviews</span>
                 {form.role === 'INTERVIEWER' && (
+                  <span className="register-role-btn__check">
+                    <Icons.Check />
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, role: 'COLLEGE' })}
+                className={`register-role-btn ${form.role === 'COLLEGE' ? 'register-role-btn--active' : ''}`}
+              >
+                <span className="register-role-btn__icon">
+                  <Icons.Building />
+                </span>
+                <span className="register-role-btn__label">Placement Cell</span>
+                <span className="register-role-btn__desc">Manage campus</span>
+                {form.role === 'COLLEGE' && (
                   <span className="register-role-btn__check">
                     <Icons.Check />
                   </span>
@@ -272,7 +311,7 @@ export function RegisterPage() {
                     type="text"
                     required
                     className="register-input"
-                    placeholder="Enter your full name"
+                    placeholder="Enter full name"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />

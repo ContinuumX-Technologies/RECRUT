@@ -4,7 +4,7 @@ type User = {
   id: string;
   name: string;
   email: string;
-  role: 'CANDIDATE' | 'INTERVIEWER';
+  role: 'CANDIDATE' | 'INTERVIEWER' | 'COLLEGE'; // [UPDATED]
   candidateId?: string | null;
 };
 

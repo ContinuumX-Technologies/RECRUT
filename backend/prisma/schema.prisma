@@ -125,7 +125,32 @@ model MediaRecord {
   @@index([yoloProcessed])
 }
 
+model CompanyOutreach {
+  id            String   @id @default(cuid())
+  companyName   String
+  email         String   @unique
+  contactPerson String?
+  
+  // VIT Workflow Fields
+  status        String   @default("contacted") // contacted, negotiating, scheduled, rejected
+  tier          String?  // 'Super Dream' (>10LPA), 'Dream' (6-10LPA), 'Regular' (<6LPA)
+  ctc           Float?   // e.g. 12.5 (in LPA)
+  slot          String?  // 'Slot 1', 'Slot 2', 'Day 1'
+  cgpaCutoff    Float?   // e.g. 8.5
+  
+  // Timeline of interactions
+  timeline      Json?    // [{date, title, description}]
+
+  // Link to the system when they are accepted
+  onboardedUserId String? // The User ID of the Company Account
+  driveDate       DateTime? 
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 enum Role {
   CANDIDATE
   INTERVIEWER
+  COLLEGE
 }

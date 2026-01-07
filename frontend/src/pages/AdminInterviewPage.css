@@ -1380,13 +1380,13 @@
     word-break: break-all;
     line-height: var(--leading-relaxed);
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
   
   .monitor-log:hover .monitor-log__payload {
-    -webkit-line-clamp: unset;
+    line-clamp: unset;
   }
   
   /* ============================================
