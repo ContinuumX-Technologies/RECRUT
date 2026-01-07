@@ -1076,33 +1076,57 @@ app.get('/api/college/outreach', authMiddleware, requireRole('COLLEGE'), async (
 // 3. FINALIZE SLOT & ONBOARD (Generate Login)
 app.post('/api/college/outreach/:id/onboard', authMiddleware, requireRole('COLLEGE'), async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-  const { slot, driveDate } = req.body; // e.g., "Slot 1", "2026-09-15"
+  const { slot, driveDate } = req.body; 
 
   try {
     const record = await prisma.companyOutreach.findUnique({ where: { id } });
     if (!record) return res.status(404).json({ error: 'Not found' });
 
     // A. Generate Credentials
-    const generatedPassword = Math.random().toString(36).slice(-8); // Simple random pass
-    // In real app, hash this!
-    // const passwordHash = await hashPassword(generatedPassword);
+    const generatedPassword = Math.random().toString(36).slice(-8);
     
-    // For demo, we just simulate the user creation:
-    // const user = await prisma.user.create(...) 
+    // [FIX START] Hash password and create user
+    const passwordHash = await hashPassword(generatedPassword);
+
+    // Check if user already exists to avoid unique constraint errors
+    const existingUser = await prisma.user.findUnique({ where: { email: record.email } });
     
+    if (!existingUser) {
+      await prisma.user.create({
+        data: {
+          name: record.companyName,
+          email: record.email,
+          passwordHash: passwordHash,
+          role: 'INTERVIEWER', // Assign as Interviewer so they can access /interviewer/dashboard
+        }
+      });
+    } else {
+      // Optional: Reset password if user already exists
+      await prisma.user.update({
+        where: { email: record.email },
+        data: { passwordHash }
+      });
+    }
+    // [FIX END]
+
     // B. Update Outreach Record with Slot
-    const updated = await prisma.companyOutreach.update({
+    await prisma.companyOutreach.update({
       where: { id },
       data: {
         status: 'scheduled',
         slot,
         driveDate: new Date(driveDate),
-        timeline: [...(record.timeline as any[]), { date: new Date().toISOString(), title: 'Slot Allocated', description: `Assigned ${slot} on ${driveDate}` }]
+        timeline: [...(record.timeline as any[] || []), { 
+          date: new Date().toISOString(), 
+          title: 'Slot Allocated', 
+          description: `Assigned ${slot} on ${driveDate}` 
+        }]
       }
     });
 
     res.json({ success: true, credentials: { email: record.email, password: generatedPassword } });
   } catch (e) {
+    console.error(e);
     res.status(500).json({ error: 'Error onboarding' });
   }
 });
